@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+source .venv/bin/activate
+
+echo "🤖 Router Phase 1 Console Chat"
+echo "Type :q to quit, :help for commands"
+echo "================================"
+
+while true; do
+  read -rp "you> " q || exit 0
+  [[ "$q" == ":q" ]] && exit 0
+
+  case "$q" in
+    ":help"|":h")
+      echo "Commands:"
+      echo "  :q       - quit"
+      echo "  :help    - show this help"
+      echo "  :index   - rebuild RAG index"
+      echo "  :drafts  - list saved drafts"
+      echo "  :runs    - list recent runs"
+      echo "  :clear   - clear current chat"
+      ;;
+    ":index"|":i")
+      echo "Rebuilding RAG index..."
+      ./agt index --project default
+      ;;
+    ":drafts"|":d")
+      echo "Recent drafts:"
+      ./agt drafts --project default -n 5
+      ;;
+    ":runs"|":r")
+      echo "Recent runs:"
+      ./agt runs --project default -n 5
+      ;;
+    ":clear"|":c")
+      echo "Chat cleared (use continue with --draft to load previous)"
+      ;;
+    *)
+      echo "🤖 Processing..."
+      ./agt continue --project default --bible "$q"
+      ;;
+  esac
+done

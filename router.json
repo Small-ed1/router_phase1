@@ -1,0 +1,12 @@
+{
+  "theme": "dark",
+  "contextTokens": 128000,
+  "defaultModel": "llama3.2:3b",
+  "accent": "#00661f",
+  "fontSize": "small",
+  "autoModelSwitch": false,
+  "autoModelSwitchMode": "auto",
+  "citationFormat": "inline",
+  "maxToolCalls": 50,
+  "temperature": 0
+}

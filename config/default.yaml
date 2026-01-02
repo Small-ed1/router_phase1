@@ -1,0 +1,79 @@
+# Default configuration for Router Phase 1
+
+# Router settings
+router:
+  default_mode: "HYBRID"
+  confidence_threshold: 0.5
+  enable_signals: true
+
+# Budget settings
+budget:
+  global_max: 12
+  per_tool:
+    web_search: 5
+    kiwix_query: 5
+    fetch_url: 3
+    read_file: 3
+    edit_file: 2
+    list_dir: 2
+  per_step:
+    understand: 1
+    plan: 2
+    gather: 10
+    verify: 1
+    synthesize: 1
+    finalize: 5
+  time_limit_s: 300
+
+# Stop conditions
+stop_conditions:
+  min_sources: 0
+  max_words: 2000
+  max_tool_calls_total: 12
+
+# Worker settings
+worker:
+  default_model: "llama3.1"
+  timeout_s: 60
+  max_retries: 3
+  temperature: 0.7
+
+# Tool permissions
+tool_permissions:
+  web_search: true
+  kiwix_query: true
+  fetch_url: true
+  read_file: true
+  edit_file: true
+  list_dir: true
+  write_file: true
+  github_search: true
+  github_fetch: true
+  rag_search: true
+  command_execute: false
+  file_upload: false
+
+# Pipeline settings
+pipeline:
+  enable_step_history: true
+  enable_citation_tracking: true
+  enable_artifact_creation: true
+
+# Logging
+logging:
+  level: "INFO"
+  enable_tool_logs: true
+  enable_step_logs: true
+
+# Web UI settings
+webui:
+  host: "127.0.0.1"
+  port: 8000
+  enable_cors: true
+  static_files: "webui/static"
+
+# Project settings
+project:
+  default_project: "default"
+  base_path: "projects"
+  enable_project_isolation: true

@@ -1,0 +1,14 @@
+[Unit]
+Description=Router Phase 1 Services
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/small_ed/router_phase1
+ExecStart=/home/small_ed/router_phase1/start_servers.sh
+Restart=always
+User=small_ed
+Group=small_ed
+
+[Install]
+WantedBy=multi-user.target

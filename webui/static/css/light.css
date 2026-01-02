@@ -1,0 +1,40 @@
+/* Light Theme */
+:root {
+    --bg-color: #ffffff;
+    --card-bg: #f8f9fa;
+    --bg-secondary: #e9ecef;
+    --text-color: #212529;
+    --text-muted: #6c757d;
+    --border-color: #dee2e6;
+    --hover-bg: #dde2e9;
+    --input-bg: #ffffff;
+    --button-bg: var(--accent-color, #007bff);
+    --button-hover: var(--accent-color-dark, #0056b3);
+    --message-user: var(--accent-color, #007bff);
+    --message-assistant: #f8f9fa;
+}
+
+body {
+    margin: 0; font-family: sans-serif; background: var(--bg-color); color: var(--text-color);
+}
+
+.wrap { max-width: 900px; margin: 0 auto; padding: 20px; }
+
+.card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 14px; padding: 20px; }
+
+textarea { width:100%; resize: vertical; background: var(--input-bg); color: var(--text-color); border:1px solid var(--border-color); border-radius: 12px; padding: 10px; }
+
+select { background: var(--bg-secondary); color: var(--text-color); border: 1px solid var(--border-color); }
+select option { background: var(--card-bg); color: var(--text-color); }
+
+.btn { background: var(--button-bg); color: #ffffff; border:1px solid var(--button-bg); border-radius: 12px; padding: 10px 20px; cursor:pointer; margin-right: 10px; }
+
+.btn:hover { background: var(--button-hover); filter: brightness(0.9); }
+
+.msgs { height: 400px; overflow:auto; padding:10px; border:1px solid var(--border-color); border-radius:14px; background: var(--card-bg); margin-bottom: 10px; }
+
+.bubble { max-width: 800px; padding:10px 12px; border-radius:14px; margin: 8px 0; border:1px solid var(--border-color); white-space: pre-wrap; }
+
+.u { background: var(--message-user); margin-left:auto; color: white; }
+
+.a { background: var(--message-assistant); }
