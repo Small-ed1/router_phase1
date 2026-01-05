@@ -1,0 +1,223 @@
+# Web-Based Tailnet LLM Dashboard - To-Do List
+
+## Project Overview
+Create a reactive web dashboard for hosting and interacting with local LLMs on a private Tailnet, with integrated advanced research capabilities from Life Plan AI system.
+
+---
+
+## Tasks
+
+- [ ] **Phase 1.5: Critical Fixes and Stability** (High Priority - 1-2 weeks)
+  - [ ] Fix Type Errors: Resolve mypy errors (e.g., config attribute access on None in multi_agent_system.py)
+  - [ ] Add Frontend Testing: Implement Jest/React Testing Library for component testing
+  - [ ] Complete Research API Endpoints: Finish `/api/research/start`, `/status`, `/stop` endpoints
+  - [ ] Add Error Boundaries: Implement React error boundaries for better UX
+  - [ ] Fix Memory Leaks: Audit and resolve potential memory leaks in long-running research operations
+  - Status: *Not Started*
+  - Completed: —
+
+- [x] **Phase 2: Multi-Agent Research System** (Completed 2026-01-04)
+   - Created comprehensive multi-agent research system with overseer/worker orchestration
+   - Implemented multi-source web content fetching with rate limiting and quality assessment
+   - Built section-based research planning and iterative refinement capabilities
+   - Added RAM optimization with configurable memory thresholds
+   - Created large conversation context handling with sliding window management
+
+- [x] **Phase 3: Enhanced Research System** (Completed 2026-01-05)
+   - [x] Implement Real-time Progress Updates: SSE/WebSocket for research monitoring
+   - [x] Build Research UI Components: Progress bars, result visualization, iterative controls
+   - [x] Add Research Session Management: Save/resume capabilities and history persistence
+   - [x] Create Multi-Agent Dashboard: Agent status monitoring and coordination display
+   - [x] Integrate Life Plan AI Features: Port MultiAgentSystem, ResearchOrchestrator, and IterativeResearchTool into main dashboard with real web research capabilities
+
+- [x] **Phase 4: Frontend Enhancement** (Completed 2026-01-05)
+   - [x] Complete Settings Panel: Model selection, temperature, advanced options
+   - [x] Implement Session Management UI: Chat history, session switching, archiving
+   - [x] Add Dark/Light Theme: Full implementation with user preference persistence
+   - [x] Build Research Mode UI: Dedicated interface for research workflows
+   - [x] Prepare File Upload Interface: Basic upload for Phase 5 preparation
+
+- [x] **Phase 5: Document Q&A System** (Completed 2026-01-05)
+   - [x] **Set up FAISS Vector Store** (3-4 days)
+     - [x] Install FAISS and sentence-transformers dependencies
+     - [x] Create vector store initialization module with configuration options
+     - [x] Implement index persistence and loading mechanisms
+     - [x] Add vector store health checks and metrics
+   - [x] **Create Document Processing Pipeline** (4-5 days)
+     - [x] Implement file type detection and validation
+     - [x] Build PDF text extraction with PyMuPDF/PyPDF2
+     - [x] Create DOCX/TXT processing with python-docx
+     - [x] Develop intelligent text chunking strategies (sentence/paragraph/semantic)
+     - [x] Add metadata extraction (title, author, creation date)
+     - [x] Implement preprocessing pipeline with error handling
+   - [x] **Implement Embedding Generation** (2-3 days)
+     - [x] Integrate sentence-transformers model (multi-qa-mpnet-base-dot-v1)
+     - [x] Create batch processing system for large documents
+     - [x] Implement embedding caching and deduplication
+     - [x] Add progress tracking for long embedding operations
+   - [x] **Build Q&A Chat Interface** (4-5 days)
+     - [x] Create document selection component with search/filter
+     - [x] Build Q&A chat interface with message history
+     - [x] Implement citation display with source highlighting
+     - [x] Add answer confidence indicators and source links
+     - [x] Create API endpoints: `/api/documents/upload`, `/api/qa/ask`
+   - [x] **Optimize Search** (2-3 days)
+     - [x] Implement similarity search with configurable k results
+     - [x] Add relevance scoring and result ranking
+     - [x] Create query expansion and semantic search
+     - [x] Performance benchmarking and optimization
+   - Status: *Completed*
+   - Completed: 2026-01-05
+
+- [x] **Phase 6: Polish and Performance** (Completed 2026-01-05)
+   - [x] **Add Loading States** (2-3 days)
+     - [x] Implement skeleton screens for all major components
+     - [x] Add progress indicators for file uploads and research operations
+     - [x] Create micro-interactions for button states and transitions
+   - [x] **Optimize Performance** (3-4 days)
+     - [x] React.memo implementation for expensive components
+     - [x] API response caching and request deduplication
+     - [x] Virtual scrolling for document lists and search results
+     - [x] Bundle analysis and optimization recommendations
+   - [x] **Implement Bundle Optimization** (1-2 days)
+     - [x] Configure code splitting by route/feature
+     - [x] Implement lazy loading for non-critical components
+     - [x] Set up compression and minification
+     - [x] Optimize vendor chunk separation
+   - [x] **Enhance Error Recovery** (2-3 days)
+     - [x] Implement retry mechanisms for failed API calls
+     - [x] Create fallback UI states for network failures
+     - [x] Design user-friendly error messages and recovery options
+     - [x] Add error reporting and logging
+   - [x] **Add Animation Library** (1-2 days)
+     - [x] Select and integrate Framer Motion for smooth transitions
+     - [x] Implement page transition animations
+     - [x] Add loading state animations and micro-interactions
+   - Status: *Completed*
+   - Completed: 2026-01-05
+
+- [ ] **Phase 7: Deployment and Operations** (Low Priority - 1-2 weeks)
+   - [ ] **Set up Docker Containerization** (2-3 days)
+     - [ ] Create multi-stage Dockerfile for backend
+     - [ ] Set up Node.js container for frontend build
+     - [ ] Configure environment variables and networking
+     - [ ] Add health checks and container optimization
+   - [ ] **Configure Systemd Service** (1-2 days)
+     - [ ] Create systemd service file for backend
+     - [ ] Test service reliability and auto-restart
+     - [ ] Add logging configuration and rotation
+     - [ ] Implement graceful shutdown handling
+   - [ ] **Implement Health Monitoring** (2-3 days)
+     - [ ] Add comprehensive health check endpoints
+     - [ ] Implement metrics collection (response times, error rates)
+     - [ ] Set up alerting thresholds and notifications
+     - [ ] Create monitoring dashboard interface
+   - [ ] **Create Backup Utilities** (1-2 days)
+     - [ ] Design backup scripts for vector indices and documents
+     - [ ] Implement restore procedures and verification
+     - [ ] Schedule automated backups
+     - [ ] Add encryption for sensitive data
+   - [ ] **Write Deployment Documentation** (1-2 days)
+     - [ ] Create step-by-step installation guides
+     - [ ] Document environment setup and configuration
+     - [ ] Write troubleshooting and maintenance guides
+     - [x] Add API documentation with examples
+   - Status: *Not Started*
+   - Completed: —
+
+- [ ] **Phase 9: Enhanced Chat Interface & Rich Text Editing** (High Priority - 2-3 weeks)
+   - [ ] **Rich Text Editor Integration** (4-5 days)
+     - [ ] Implement Quill.js for rich text editing in chat messages
+     - [ ] Support markdown-like syntax: **bold**, *italic*, `code`, headings, lists, separators
+     - [ ] Auto-decode LLM output formatting (**, *, `, ---, # ## ###, etc.)
+     - [ ] Real-time formatting and rendering of AI responses
+   - [ ] **Chat Interface Enhancements** (3-4 days)
+     - [ ] Message threading and reply chains
+     - [ ] Message search and filtering within conversations
+     - [ ] Enhanced message formatting and display
+     - [ ] Chat export capabilities (markdown, HTML)
+   - [ ] **Context Management** (2-3 days)
+     - [ ] Enhanced context window management for long conversations
+     - [ ] Conversation summarization for context preservation
+     - [ ] Context-aware message suggestions
+   - Status: *Not Started*
+   - Completed: —
+
+- [ ] **Phase 10: Advanced RAG & Knowledge System** (High Priority - 3-4 weeks)
+   - [ ] **Enhanced Document Processing** (1 week)
+     - [ ] Support additional file types (EPUB, HTML, CSV, JSON)
+     - [ ] Intelligent document chunking with semantic boundaries
+     - [ ] Enhanced metadata extraction and indexing
+     - [ ] Document versioning and change tracking
+   - [ ] **Advanced Retrieval System** (1 week)
+     - [ ] Hybrid search (keyword + semantic similarity)
+     - [ ] Query expansion and intent understanding
+     - [ ] Multi-document synthesis and comparison
+     - [ ] Source credibility scoring and ranking
+   - [ ] **Knowledge Graph Integration** (1 week)
+     - [ ] Entity extraction and relationship mapping
+     - [ ] Knowledge graph visualization
+     - [ ] Cross-document reference linking
+     - [ ] Concept mapping and exploration
+   - Status: *Not Started*
+   - Completed: —
+
+- [ ] **Phase 11: Tool Calling Architecture** (Medium Priority - 4-5 weeks)
+   - [ ] **Light Tool Calling System** (2 weeks)
+     - [ ] Single LLM call tool execution framework (vs multi-pass research)
+     - [ ] Local-first tool system with optional API integration
+     - [ ] Tool discovery and registration system
+     - [ ] Tool parameter validation and type safety
+   - [ ] **Built-in Tools** (1 week)
+     - [ ] Web search and content fetching (local processing)
+     - [ ] Code execution and analysis
+     - [ ] File operations (read, write, search, analyze)
+     - [ ] Data processing and transformation
+   - [ ] **Tool Management UI** (1 week)
+     - [ ] Tool browser and configuration interface
+     - [ ] Tool execution history and results display
+     - [ ] Custom tool creation interface
+     - [ ] Tool settings (enable/disable APIs in settings panel)
+   - Status: *Not Started*
+   - Completed: —
+
+- [ ] **Phase 12: System Integration & Owner Tools** (High Priority - 3-4 weeks)
+   - [ ] **Secure Console Execution** (2 weeks)
+     - [ ] Owner-only sandboxed command execution environment
+     - [ ] Support both interactive sessions and single commands
+     - [ ] LLM-directed operations (user tells LLM what to execute)
+     - [ ] Command whitelisting and resource limits
+   - [ ] **File System Integration** (1 week)
+     - [ ] Owner-only full filesystem access and management
+     - [ ] LLM-directed file operations (read, write, analyze, organize)
+     - [ ] File browser and management interface
+     - [ ] Automatic file analysis and content preview
+   - [ ] **System Monitoring** (1 week)
+     - [ ] Real-time system metrics (CPU, memory, disk usage)
+     - [ ] Process monitoring and management
+     - [ ] Log aggregation and analysis
+     - [ ] System health dashboards
+   - Status: *Not Started*
+   - Completed: —
+
+- [ ] **Security Implementation** (High Priority - Integrated throughout)
+   - [ ] Owner authentication and authorization system
+   - [ ] API rate limiting and abuse prevention
+   - [ ] Input sanitization and validation
+   - [ ] HTTPS configuration and SSL certificate management
+   - Status: *Not Started*
+   - Completed: —
+
+---
+
+## Notes
+- **LLM-Directed Operations**: All advanced features (console, filesystem, tools) are triggered by user instructing the LLM, not automatic operations
+- **Security Model**: Owner-only access for dangerous features, foundation for future role-based access
+- **Local-First**: Core functionality works offline, API tools optional (configurable)
+- **Rich Text Focus**: Primarily for LLM output formatting and readability
+- Target hardware: 16GB RAM, i5 CPU (scalable to 40GB)
+- Backend: FastAPI + Ollama
+- Frontend: React with Vite + Quill.js
+- Vector Store: FAISS for local document Q&A
+- Research Integration: Life Plan AI features integrated into main dashboard
+- All existing Router Phase 1 functionality must be preserved

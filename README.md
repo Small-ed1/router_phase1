@@ -11,9 +11,12 @@ Router Phase 1 provides a web-based interface for interacting with AI models, ma
 - **Web UI**: Chat interface with settings, sidebar for chat/model management
 - **Model Support**: Integration with Ollama models (auto-fetching available models)
 - **Chat Management**: Create, rename, delete, archive chats with summaries
-- **Deep Research**: Multi-pass analysis with structured research flow
+- **Deep Research**: Multi-pass analysis with structured research flow and LLM refinement
 - **Settings**: Configurable temperature, context tokens, themes, auto-model switching
-- **Tools**: File operations, web search, Kiwix integration
+- **Tools**: File operations, web search, Kiwix integration, DuckDuckGo search, iterative research
+- **Multi-Agent System**: Overseer/worker orchestration for complex tasks
+- **Memory Management**: RAM optimization with configurable thresholds
+- **Context Handling**: Sliding window context management for long conversations
 
 ## Installation
 
