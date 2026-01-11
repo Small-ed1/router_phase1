@@ -4,53 +4,30 @@ Essential information for agentic coding agents working in this repository.
 
 ## Build, Lint, and Test Commands
 
-### Backend (Python + FastAPI)
 ```bash
-# Install dependencies (Arch Linux: pip install --break-system-packages -r requirements.txt)
-pip install --break-system-packages -r requirements.txt
+# Install dependencies
+pip install -r requirements.txt
 
-# Development server
-uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000
+# Run development server (FastAPI + Uvicorn)
+uvicorn app:app --reload --host 0.0.0.0 --port 8000
 
-# Web UI server (separate)
-uvicorn webui.app:app --reload --host 0.0.0.0 --port 3000
+# Run TUI
+python3 router_tui.py
 
-# Run all tests
-python -m pytest tests/ -v
+# Type checking (if mypy is available)
+mypy app.py --ignore-missing-imports
 
-# Run single test file
-python -m pytest tests/test_database.py -v
-
-# Run tests with coverage
-python -m pytest tests/ --cov=backend --cov-report=html
-
-# Type checking
-mypy backend/ --ignore-missing-imports
-
-# Code formatting
-black backend/ && isort backend/
-
-# Lint all Python files
-ruff check backend/ webui/ agent/ utils/
-
-# Fix auto-fixable lint issues
-ruff check backend/ webui/ agent/ utils/ --fix
+# Manual testing
+curl http://localhost:8000/health
+curl http://localhost:8000/api/status
 ```
 
-### Service Endpoints
+**Note:** This codebase does not have automated tests or linting configured. Tests exist only in backup/ directory. When adding features, manually test endpoints.
+
+## Service Endpoints
+
 - **Backend API**: http://localhost:8000
-- **Web UI**: http://localhost:3000
-- **Ollama API**: http://localhost:11434
-
-### Post-Edit Workflow
-After making any code changes, run:
-```bash
-# Quick restart (recommended)
-./restart_servers.sh all
-
-# Health check
-curl http://localhost:8000/api/v1/health
-```
+- **Ollama API**: http://localhost:11434 (must be running separately)
 
 ## Code Style Guidelines
 
@@ -58,164 +35,79 @@ curl http://localhost:8000/api/v1/health
 
 #### Imports
 ```python
-# Standard library imports
-import json
-import sqlite3
-from typing import List, Dict, Any, Optional
-
-# Third-party imports
+from __future__ import annotations
+import os, sqlite3, time
+from typing import Optional, Any
+from contextlib import asynccontextmanager, contextmanager
 import httpx
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
-# Local imports
-from .database import Database
-from .auth import AuthManager
+from fastapi import FastAPI, HTTPException, UploadFile, File
+from pydantic import BaseModel, Field, ConfigDict
+import ragstore, chatstore, webstore, researchstore
 ```
 
 #### Type Hints
 ```python
-# Use explicit typing for all function parameters and return values
-async def get_user(user_id: int) -> Optional[Dict[str, Any]]:
-    # Function implementation
-    pass
+async def get_chat(chat_id: str, limit: int = 2000) -> dict[str, Any]:
+    return {"chat": {}, "messages": []}
 
-# Use Union types for multiple possible types
-def process_data(data: Union[str, bytes]) -> str:
-    pass
+def get_user(user_id: int) -> Optional[Dict[str, Any]]:
+    return None
+chat_id: str | None = None
+```
 
-# Use generics for collections
-def search_items(query: str) -> List[Dict[str, str]]:
-    pass
+#### Pydantic Models
+```python
+class ChatCreateReq(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    title: Optional[str] = "New Chat"
 ```
 
 #### Error Handling
 ```python
-async def api_endpoint(request: UserRequest):
+@app.get("/api/chats/{chat_id}")
+async def api_get_chat(chat_id: str):
     try:
-        if not request.name:
-            raise HTTPException(status_code=400, detail="Name required")
-        result = await process_user_request(request)
-        return {"status": "success", "data": result}
-    except HTTPException:
-        raise  # Re-raise FastAPI exceptions
-    except sqlite3.IntegrityError as e:
-        raise HTTPException(status_code=400, detail="Database constraint violation")
-    except Exception as e:
-        # Log unexpected errors
-        logger.error(f"Unexpected error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return chatstore.get_chat(chat_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="chat not found")
 ```
 
 #### Naming Conventions
-- **Classes**: PascalCase (`UserManager`, `Database`)
-- **Functions/Methods**: snake_case (`get_user`, `process_data`)
-- **Constants**: UPPER_SNAKE_CASE (`DEFAULT_TIMEOUT`, `MAX_RETRIES`)
+- **Classes**: PascalCase (`ChatCreateReq`, `Database`)
+- **Functions/Methods**: snake_case (`get_chat`, `list_chats`, `init_db`)
+- **Constants**: UPPER_SNAKE_CASE (`OLLAMA_URL`, `DEFAULT_EMBED_MODEL`)
 - **Files**: snake_case (`user_manager.py`, `database.py`)
 - **Variables**: snake_case (`user_data`, `result_list`)
 - **Private methods**: prefix with `_` (`_validate_input`)
-- **Database tables**: snake_case (`users`, `chat_messages`)
-
-#### Async/Await Patterns
-```python
-# Always use async for I/O operations
-async def fetch_user_data(user_id: int) -> Dict[str, Any]:
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"/api/users/{user_id}")
-        return response.json()
-
-# Use ThreadPoolExecutor for CPU-bound operations
-async def process_embedding(text: str) -> List[float]:
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(executor, embedding_model.encode, text)
-```
 
 #### Database Operations
 ```python
-# Always use context managers for database connections
-def get_user(user_id: int) -> Optional[Dict[str, Any]]:
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
-        row = cursor.fetchone()
-        return dict(row) if row else None
-
-# Use parameterized queries to prevent SQL injection
-def create_user(username: str, password_hash: str) -> int:
-    with sqlite3.connect(db.db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO users (username, password_hash)
-            VALUES (?, ?)
-        """, (username, password_hash))
-        conn.commit()
-        return cursor.lastrowid
+@contextmanager
+def _db():
+    con = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA journal_mode=WAL;")
+    con.execute("PRAGMA synchronous=NORMAL;")
+    try:
+        yield con
+        con.commit()
+    finally:
+        con.close()
 ```
 
 ### JavaScript (Web UI)
 
 #### Imports
 ```javascript
-// Standard modules first
-import { useState, useEffect } from 'react';
-
-// Third-party libraries
-import axios from 'axios';
-
-// Local imports (relative paths)
-import { apiClient } from './api';
-import ChatMessage from './ChatMessage';
-```
-
-#### Component Patterns
-```javascript
-function ChatInterface({ userId }) {
-    const [messages, setMessages] = useState([]);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        loadMessages();
-    }, [userId]);
-
-    const loadMessages = async () => {
-        try {
-            setLoading(true);
-            const data = await apiClient.get(`/chats/${userId}/messages`);
-            setMessages(data.messages);
-        } catch (error) {
-            console.error('Failed to load messages:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="chat-container">
-            {messages.map(msg => (
-                <ChatMessage key={msg.id} message={msg} />
-            ))}
-        </div>
-    );
+const el = (id) => document.getElementById(id);
+async function api(path, opts) {
+    const res = await fetch(path, opts);
+    const text = await res.text();
+    let j = {};
+    try { j = JSON.parse(text); } catch {}
+    if (!res.ok) throw new Error(j.error || j.detail || `HTTP ${res.status}`);
+    return j;
 }
-```
-
-#### Error Handling
-```javascript
-const handleApiCall = async () => {
-    try {
-        const response = await fetch('/api/data', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        const data = await response.json();
-        setData(data);
-    } catch (error) {
-        console.error('API call failed:', error);
-        setError(error.message);
-    }
-};
 ```
 
 #### Naming Conventions
@@ -225,48 +117,49 @@ const handleApiCall = async () => {
 - **CSS Classes**: kebab-case (`chat-container`, `message-item`)
 - **Variables**: camelCase (`userData`, `isLoading`)
 
-### General Guidelines
+### Python (TUI)
 
-#### File Organization
+Follow backend Python conventions. Use textual for TUI components.
+
+## File Organization
+
 ```
-backend/
-├── app.py              # Main FastAPI application
-├── database.py         # Database schema and connections
-├── auth.py            # Authentication and authorization
-├── config.py          # Configuration management
-├── rag_service.py     # RAG operations
-├── chat_manager.py    # Chat CRUD operations
-└── routes/            # Additional route handlers
-
-webui/
-├── app.py             # Web UI FastAPI application
-└── static/            # CSS/JS assets
-
-agent/
-├── router.py          # Main agent logic
-├── research/          # Research agents
-├── tools/             # Tool implementations
-└── config.py          # Agent configuration
-
-tests/
-├── test_database.py   # Database tests
-├── test_auth.py       # Authentication tests
-└── test_*.py          # Other test files
+/
+├── app.py                 # Main FastAPI application
+├── chatstore.py           # Chat database operations
+├── ragstore.py            # RAG document storage
+├── webstore.py            # Web page scraping
+├── researchstore.py       # Deep research runs
+├── router_tui.py          # Terminal User Interface
+├── requirements.txt        # Python dependencies
+├── static/
+│   ├── index.html         # Main web UI
+│   └── app.js            # Frontend JavaScript
+└── *.sqlite3             # SQLite databases
 ```
 
-#### Security Best Practices
-- **Input Validation**: Always validate and sanitize user inputs
-- **Authentication**: Use JWT tokens with proper expiration
-- **SQL Injection Prevention**: Use parameterized queries
-- **XSS Prevention**: Sanitize HTML content in responses
-- **CORS**: Configure appropriate CORS policies
-- **Secrets**: Never commit secrets; use environment variables
+## Environment Variables
 
-#### Performance Considerations
-- **Database Indexing**: Add indexes on frequently queried columns
-- **Connection Pooling**: Reuse database connections
-- **Async Operations**: Use async/await for I/O operations
-- **Memory Management**: Monitor memory usage, especially with embeddings
-- **Caching**: Cache expensive operations when appropriate
+```bash
+OLLAMA_URL="http://127.0.0.1:11434"
+EMBED_MODEL="embeddinggemma"
+DEFAULT_CHAT_MODEL="llama3.1"
+API_BASE="http://127.0.0.1:8000"
+RAG_DB="rag.sqlite3"
+CHAT_DB="chat.sqlite3"
+MAX_UPLOAD_BYTES=10485760"
 
-This guide ensures consistency across the codebase and helps agents produce high-quality, maintainable code.
+# Web scraping SSRF protection
+WEB_ALLOWED_HOSTS=""        # Comma-separated whitelist (empty = any public domain)
+WEB_BLOCKED_HOSTS=""        # Comma-separated blacklist
+WEB_UA="Mozilla/5.0..."  # Custom User-Agent for requests
+```
+
+## Notes
+
+- **No automated tests**: All testing is manual via curl or web UI
+- **No linting/formatting config**: Code style is maintained manually
+- **SQLite WAL mode**: Always use WAL journal mode for concurrency
+- **Type hints**: Use `dict[str, Any]` and `list[str]` style (Python 3.9+)
+- **Async context managers**: Use `@asynccontextmanager` for lifespan in FastAPI apps
+- **Error responses**: Return JSON with `{"error": "message"}` or `{"detail": "message"}`
