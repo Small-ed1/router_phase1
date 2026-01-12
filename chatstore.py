@@ -531,45 +531,40 @@ def fork_chat(chat_id: str, upto_msg_id: int) -> dict[str, Any]:
 def search_messages(q: str, chat_id: Optional[str] = None, limit: int = 25, offset: int = 0) -> list[dict[str, Any]]:
     q = (q or "").strip()
     if not q:
-        return []
+        return [] 
 
     limit = max(1, min(int(limit), 200))
-    offset = max(0, int(offset))
+    offset = max(0, int(offset)) 
+
+    safe_q = _fts_safe_query(q)
+    if not safe_q:
+        return []
 
     with _db() as con:
-        def run(match_q: str):
-            params: list[Any] = []
-            where = ""
-            if chat_id:
-                where = " AND m.chat_id=? "
-                params.append(chat_id)
+        params: list[Any] = []
+        where = ""
+        if chat_id:
+            where = " AND m.chat_id=? "
+            params.append(chat_id) 
 
-            sql = f"""
-            SELECT
-              m.id AS msg_id,
-              m.chat_id,
-              c.title AS chat_title,
-              m.role,
-              m.created_at,
-              snippet(messages_fts, 1, '[', ']', '…', 14) AS snippet
-            FROM messages_fts
-            JOIN messages m ON m.id = messages_fts.rowid
-            JOIN chats c ON c.id = m.chat_id
-            WHERE messages_fts MATCH ?
-            {where}
-            ORDER BY m.created_at DESC, m.id DESC
-            LIMIT ? OFFSET ?;
-            """
-            params2 = [match_q] + params + [limit, offset]
-            return [dict(r) for r in con.execute(sql, params2).fetchall()]
-
-        try:
-            return run(q)
-        except sqlite3.OperationalError:
-            safe = _fts_safe_query(q)
-            if not safe:
-                return []
-            return run(safe)
+        sql = f"""
+        SELECT
+          m.id AS msg_id,
+          m.chat_id,
+          c.title AS chat_title,
+          m.role,
+          m.created_at,
+          snippet(messages_fts, 1, '[', ']', '…', 14) AS snippet
+        FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        JOIN chats c ON c.id = m.chat_id
+        WHERE messages_fts MATCH ?
+        {where}
+        ORDER BY m.created_at DESC, m.id DESC
+        LIMIT ? OFFSET ?;
+        """
+        params2 = [safe_q] + params + [limit, offset]
+        return [dict(r) for r in con.execute(sql, params2).fetchall()]
 
 # -------- tags --------
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import os, json, re, time
+import os, json, re, time, asyncio, logging
 from typing import Optional, Any
 from contextlib import asynccontextmanager
 
@@ -11,16 +11,75 @@ from fastapi.responses import FileResponse, StreamingResponse, JSONResponse, Pla
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 
+import config
 import ragstore
 import chatstore
 import researchstore
 import webstore
 
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
-DEFAULT_EMBED_MODEL = os.getenv("EMBED_MODEL", "embeddinggemma")
-MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
+
+OLLAMA_URL = config.config.ollama_url
+DEFAULT_EMBED_MODEL = config.config.default_embed_model
+DEFAULT_CHAT_MODEL = config.config.default_chat_model
+MAX_UPLOAD_BYTES = config.config.max_upload_bytes
 
 _http: httpx.AsyncClient | None = None
+
+# Simple in-memory cache
+_cache = {}
+_cache_lock = asyncio.Lock()
+
+SLASH_COMMANDS = [
+    {"cmd": "/help",    "args": "",           "desc": "Show all commands"},
+    {"cmd": "/find",    "args": "<query>",    "desc": "Search within current chat"},
+    {"cmd": "/search",  "args": "<query>",    "desc": "Search across all chats"},
+    {"cmd": "/pin",     "args": "",           "desc": "Toggle pin for current chat"},
+    {"cmd": "/archive", "args": "",           "desc": "Toggle archive for current chat"},
+    {"cmd": "/summary", "args": "",           "desc": "Generate/update chat summary"},
+    {"cmd": "/jump",    "args": "<msg_id>",   "desc": "Jump to a message id"},
+    {"cmd": "/clear",   "args": "",           "desc": "Clear current chat"},
+    {"cmd": "/status",  "args": "",           "desc": "Show system status"},
+    {"cmd": "/research", "args": "<question>", "desc": "Start research task"},
+    {"cmd": "/set",     "args": "<key> <value>", "desc": "Change settings"},
+    {"cmd": "/tags",    "args": "",           "desc": "Show/manage chat tags"},
+    {"cmd": "/tag",     "args": "<tag>",      "desc": "Add/remove tag from chat"},
+    {"cmd": "/trace",   "args": "<run_id>",   "desc": "Show research trace"},
+    {"cmd": "/sources", "args": "<run_id>",   "desc": "Show research sources"},
+    {"cmd": "/claims",  "args": "<run_id>",   "desc": "Show research claims"},
+    {"cmd": "/autosummary", "args": "",       "desc": "Toggle auto-summary"},
+]
+
+def _now():
+    return int(time.time())
+
+async def _cached_get(key: str, ttl: int, fetcher):
+    """Simple cache with TTL"""
+    async with _cache_lock:
+        if key in _cache:
+            data, timestamp = _cache[key]
+            if time.time() - timestamp < ttl:
+                return data
+        data = await fetcher()
+        _cache[key] = (data, time.time())
+        return data
+
+def _sanitize_filename(filename: str | None) -> str:
+    if not filename:
+        return "upload.txt"
+    filename = filename.strip()
+    filename = os.path.basename(filename)
+    filename = re.sub(r"[^\w\-_.]", "_", filename)
+    filename = filename.lstrip(".")
+    filename = filename[:200] or "upload.txt"
+    if not any(filename.lower().endswith(ext) for ext in [".txt", ".md", ".py", ".js", ".html", ".csv", ".json"]):
+        filename = filename + ".txt"
+    return filename
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,31 +105,69 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"ok": True}
+    import psutil
+    import platform
+
+    try:
+        # System metrics
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+
+        return {
+            "ok": True,
+            "timestamp": _now(),
+            "system": {
+                "platform": platform.system(),
+                "cpu_percent": cpu_percent,
+                "memory_percent": memory.percent,
+                "memory_used_gb": round(memory.used / (1024**3), 2),
+                "memory_total_gb": round(memory.total / (1024**3), 2),
+                "disk_percent": disk.percent,
+                "disk_free_gb": round(disk.free / (1024**3), 2),
+            },
+            "services": {
+                "ollama": await api_status(),
+            }
+        }
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+@app.get("/api/slash_commands")
+async def api_slash_commands():
+    return {"commands": SLASH_COMMANDS}
 
 @app.get("/api/status")
 async def api_status():
     if not _http:
         return {"ok": False, "error": "client not initialized"}
-    try:
-        v = await _http.get(f"{OLLAMA_URL}/api/version", timeout=2.5)
-        ver = v.json().get("version")
-        return {"ok": True, "version": ver}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+
+    async def fetch_status():
+        try:
+            v = await _http.get(f"{OLLAMA_URL}/api/version", timeout=2.5)
+            ver = v.json().get("version")
+            return {"ok": True, "version": ver}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    return await _cached_get("status", 60, fetch_status)  # Cache for 60 seconds
 
 @app.get("/api/models")
 async def api_models():
     if not _http:
         return {"models": [], "error": "client not initialized"}
-    try:
-        r = await _http.get(f"{OLLAMA_URL}/api/tags", timeout=3.0)
-        r.raise_for_status()
-        data = r.json()
-        models = [m.get("name") for m in data.get("models", []) if m.get("name")]
-        return {"models": models}
-    except Exception as e:
-        return JSONResponse({"models": [], "error": str(e)}, status_code=200)
+
+    async def fetch_models():
+        try:
+            r = await _http.get(f"{OLLAMA_URL}/api/tags", timeout=3.0)
+            r.raise_for_status()
+            data = r.json()
+            models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+            return {"models": models}
+        except Exception as e:
+            return {"models": [], "error": str(e)}
+
+    return await _cached_get("models", 30, fetch_models)  # Cache for 30 seconds
 
 # ---------------- docs ----------------
 
@@ -96,9 +193,9 @@ async def docs_patch(doc_id: int, req: DocPatchReq):
 
 @app.post("/api/docs/upload")
 async def docs_upload(file: UploadFile = File(...)):
-    chunks = []
     total = 0
     chunk_size = 8192
+    chunks = []
     
     while total < MAX_UPLOAD_BYTES:
         chunk = await file.read(chunk_size)
@@ -106,8 +203,14 @@ async def docs_upload(file: UploadFile = File(...)):
             break
         chunks.append(chunk)
         total += len(chunk)
+        if total > MAX_UPLOAD_BYTES:
+            chunks = chunks[:-1]
+            total -= len(chunk)
+            logger.warning(f"File upload too large: {total} bytes (max {MAX_UPLOAD_BYTES})")
+            raise HTTPException(status_code=413, detail=f"File too large (max {MAX_UPLOAD_BYTES} bytes)")
     
     if total == 0:
+        logger.warning("Empty file upload attempt")
         raise HTTPException(status_code=400, detail="Empty file")
     
     raw = b"".join(chunks)
@@ -117,9 +220,12 @@ async def docs_upload(file: UploadFile = File(...)):
         text = raw.decode("utf-8", errors="ignore")
     
     if not text.strip():
+        logger.warning("File contains no readable text")
         raise HTTPException(status_code=400, detail="No readable text")
     
-    doc_id = await ragstore.add_document(file.filename or "upload.txt", text)
+    safe_filename = _sanitize_filename(file.filename)
+    logger.info(f"Uploading document: {safe_filename} ({total} bytes)")
+    doc_id = await ragstore.add_document(safe_filename, text)
     return {"ok": True, "doc_id": doc_id}
 
 @app.get("/api/chunks/{chunk_id}")
@@ -166,8 +272,10 @@ async def api_create_chat(req: ChatCreateReq):
     return {"chat": chatstore.create_chat(req.title or "New Chat")}
 
 @app.get("/api/chats/{chat_id}")
-async def api_get_chat(chat_id: str):
-    return chatstore.get_chat(chat_id)
+async def api_get_chat(chat_id: str, limit: int = 2000, offset: int = 0):
+    limit = max(1, min(limit, 5000))
+    offset = max(0, offset)
+    return chatstore.get_chat(chat_id, limit=limit, offset=offset)
 
 @app.patch("/api/chats/{chat_id}")
 async def api_patch_chat(chat_id: str, req: ChatPatchReq):
@@ -354,7 +462,7 @@ async def api_summary(chat_id: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="chat not found")
 
-    msgs = data["messages"][-60:]
+    msgs = data["messages"][-config.config.max_summary_messages:]
     body = "\n".join([f"{m['role']}: {m['content']}" for m in msgs])
 
     settings = chatstore.get_settings(chat_id)
@@ -513,9 +621,9 @@ def _guess_task(query: str) -> str:
 def _extract_json_obj(s: str):
     return _json_obj_from_text(s)
 
-def _json_obj_from_text(s: str) -> Any:
+def _json_obj_from_text(s: str, max_size: int = config.config.max_json_parse_size) -> Any:
     s = (s or "")
-    if not s:
+    if not s or len(s) > max_size:
         return None
     
     for i, ch in enumerate(s):
@@ -524,7 +632,7 @@ def _json_obj_from_text(s: str) -> Any:
             in_string = False
             escape_next = False
             
-            for j in range(i, len(s)):
+            for j in range(i, min(len(s), i + max_size)):
                 c = s[j]
                 if escape_next:
                     escape_next = False
@@ -652,7 +760,21 @@ def _rag_system_prompt(context_lines: list[str]) -> str:
 
 @app.post("/api/chat")
 async def api_chat(req: ChatReq):
+    # Input validation
+    if not req.messages or not req.model:
+        raise HTTPException(400, "Messages and model are required")
+
+    if len(req.messages) > 100:
+        raise HTTPException(400, "Too many messages")
+
+    total_chars = sum(len(m.get("content", "")) for m in req.messages)
+    if total_chars > 100000:
+        raise HTTPException(400, "Messages too long")
+
     messages = _validate_messages(req.messages)
+
+    # Performance tracking
+    start_time = time.time()
 
     async def stream():
         rag = req.rag or RagConfig(enabled=False)
@@ -933,8 +1055,8 @@ async def api_research_run(req: ResearchReq):
                     soup = BeautifulSoup(r.text, "lxml")
                     links = []
                     for a in soup.select("a.result__a"):
-                        href = a.get("href")
-                        if href and href.startswith("http"):
+                        href = str(a.get("href", ""))
+                        if href and href.startswith("http") and not webstore._is_blocked_url(href):
                             links.append(href)
                         if len(links) >= n:
                             break
@@ -942,12 +1064,14 @@ async def api_research_run(req: ResearchReq):
 
                 urls = []
                 urls_per_query = max(1, pages_per_round // len(web_queries)) if web_queries else pages_per_round
-                for wq in web_queries:
-                    try:
-                        got = await ddg_search(wq, n=urls_per_query)
-                        urls.extend(got)
-                    except Exception as e:
-                        researchstore.add_trace(run_id, "web_search_error", {"query": wq, "error": str(e)})
+                search_tasks = [ddg_search(wq, n=urls_per_query) for wq in web_queries]
+                search_results = await asyncio.gather(*search_tasks, return_exceptions=True)
+                
+                for wq, result in zip(web_queries, search_results):
+                    if isinstance(result, Exception):
+                        researchstore.add_trace(run_id, "web_search_error", {"query": wq, "error": str(result)})
+                    elif result:
+                        urls.extend(result)
 
                 cleaned_urls = []
                 for u in urls:
