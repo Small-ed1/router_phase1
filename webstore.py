@@ -31,14 +31,19 @@ def _is_private_ip(hostname: str) -> bool:
     except ValueError:
         pass
     
+    ips_found = set()
     try:
-        addr_info = socket.getaddrinfo(hostname, None)
-        for info in addr_info:
+        addr_info = socket.getaddrinfo(hostname, None, family=socket.AF_INET)
+        for info in addr_info[:3]:
             ip = ipaddress.ip_address(info[4][0])
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
                 return True
+            ips_found.add(str(ip))
     except (socket.gaierror, OSError, ValueError):
         pass
+    
+    if len(ips_found) > 1:
+        return True
     
     return False
 

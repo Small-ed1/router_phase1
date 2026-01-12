@@ -1,24 +1,24 @@
 {
   "services": {
     "ollama": {
-      "check_command": "curl -s http://localhost:11434/api/tags",
+      "check_command": "curl -s http://localhost:11434/api/tags > /dev/null 2>&1",
       "start_command": "ollama serve",
       "port": 11434,
       "name": "Ollama",
       "autostart": true
     },
     "backend": {
-      "check_command": "curl -s http://localhost:8000/api/v1/health",
+      "check_command": "curl -s http://localhost:8000/api/v1/health > /dev/null 2>&1",
       "start_command": "uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload",
       "port": 8000,
       "name": "Backend FastAPI",
       "autostart": true
     },
-    "frontend": {
-      "check_command": "curl -s -I http://localhost:1234",
-      "start_command": "cd frontend && npm start",
-      "port": 1234,
-      "name": "Frontend Dev Server",
+    "webui": {
+      "check_command": "curl -s -I http://localhost:3000 > /dev/null 2>&1",
+      "start_command": "uvicorn webui.app:app --host 0.0.0.0 --port 3000 --reload",
+      "port": 3000,
+      "name": "Web UI",
       "autostart": true
     }
   },

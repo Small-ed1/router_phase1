@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "run_command": "ask",
-    "systemd_control": "deny",
-    "package_manage": "ask"
-  }
-}

@@ -6,7 +6,7 @@ const modelSelect = el("modelSelect");
 
 const statusDot = el("statusDot");
 const statusText = el("statusText");
-const ragSummary = el("ragSummary");
+const ragSummary = document.getElementById("ragSummary"); // optional (you removed it)
 
 const btnSend = el("btnSend");
 const btnStop = el("btnStop");
@@ -48,11 +48,226 @@ const btnSettings = el("btnSettings");
 const btnSettingsClose = el("btnSettingsClose");
 const settingsOverlay = el("settingsOverlay");
 const settingsModal = el("settingsModal");
+const toastHost = document.getElementById("toastHost");
+
+// ---------- Toasts ----------
+function toast(title, body = "", ms = 1600){
+  if(!toastHost) return;
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = `<div class="toastTitle">${title}</div>${body ? `<div class="toastBody">${body}</div>` : ""}`;
+  toastHost.appendChild(t);
+  requestAnimationFrame(()=> t.classList.add("show"));
+  setTimeout(()=>{
+    t.classList.remove("show");
+    setTimeout(()=> t.remove(), 200);
+  }, ms);
+}
+
+// ---------- Settings modal ----------
+let lastFocus = null;
 
 function openSettings(){
+  if(!settingsOverlay || !settingsModal) return;
+  lastFocus = document.activeElement;
   settingsOverlay.classList.remove("hidden");
   settingsModal.classList.remove("hidden");
+  // focus first interactive element
+  const first = settingsModal.querySelector("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
+  first?.focus();
 }
+
+function closeSettings(){
+  if(!settingsOverlay || !settingsModal) return;
+  settingsOverlay.classList.add("hidden");
+  settingsModal.classList.add("hidden");
+  lastFocus?.focus?.();
+}
+
+btnSettings?.addEventListener("click", openSettings);
+btnSettingsClose?.addEventListener("click", closeSettings);
+settingsOverlay?.addEventListener("click", closeSettings);
+
+// Focus trap + Escape
+document.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape" && settingsModal && !settingsModal.classList.contains("hidden")) {
+    closeSettings();
+    return;
+  }
+  if(e.key !== "Tab") return;
+  if(!settingsModal || settingsModal.classList.contains("hidden")) return;
+
+  const focusables = [...settingsModal.querySelectorAll("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")]
+    .filter(x => !x.disabled && x.offsetParent !== null);
+
+  if(focusables.length === 0) return;
+
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+
+  if(e.shiftKey && document.activeElement === first){
+    e.preventDefault(); last.focus();
+  } else if(!e.shiftKey && document.activeElement === last){
+    e.preventDefault(); first.focus();
+  }
+});
+
+// ---------- Settings tabs ----------
+function initSettingsTabs(){
+  const tabs = document.querySelectorAll(".settingsTab");
+  const panels = document.querySelectorAll(".settingsPanel");
+  if(!tabs.length || !panels.length) return;
+
+  const saved = localStorage.getItem("ui.settings.lastTab") || "ui";
+  const clickTab = (key)=>{
+    tabs.forEach(t=>{
+      const on = t.getAttribute("data-settings-tab") === key;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    panels.forEach(p=>{
+      p.classList.toggle("hidden", p.getAttribute("data-settings-panel") !== key);
+    });
+    localStorage.setItem("ui.settings.lastTab", key);
+  };
+
+  tabs.forEach(t=>{
+    t.addEventListener("click", ()=> clickTab(t.getAttribute("data-settings-tab")));
+  });
+
+  clickTab(saved);
+}
+
+// ---------- Settings persistence + live apply ----------
+const DEFAULT_UI = {
+  uiFontSize: "md",
+  uiDensity: "cozy",
+  uiChatWidth: "comfortable",
+  uiCodeWrap: "nowrap",
+  uiReduceMotion: false,
+
+  chatShowTimestamps: false,
+  chatAutoScroll: true,
+  chatRenderMarkdown: true,
+  chatInlineSources: true,
+
+  sendKey: "ctrlenter",
+  slashBehavior: "on",
+  confirmClearChat: true,
+
+  // Model/RAG
+  ragToggle: true, // default ON, tucked away
+};
+
+function readUIState(){
+  const get = (id)=> document.getElementById(id);
+  const s = {...DEFAULT_UI};
+
+  const pick = (id)=> get(id)?.value;
+  const chk = (id)=> !!get(id)?.checked;
+
+  s.uiFontSize = pick("uiFontSize") || s.uiFontSize;
+  s.uiDensity  = pick("uiDensity") || s.uiDensity;
+  s.uiChatWidth= pick("uiChatWidth") || s.uiChatWidth;
+  s.uiCodeWrap = pick("uiCodeWrap") || s.uiCodeWrap;
+  s.uiReduceMotion = chk("uiReduceMotion");
+
+  s.chatShowTimestamps = chk("chatShowTimestamps");
+  s.chatAutoScroll = chk("chatAutoScroll");
+  s.chatRenderMarkdown = chk("chatRenderMarkdown");
+  s.chatInlineSources = chk("chatInlineSources");
+
+  s.sendKey = pick("sendKey") || s.sendKey;
+  s.slashBehavior = pick("slashBehavior") || s.slashBehavior;
+  s.confirmClearChat = chk("confirmClearChat");
+
+  // RAG toggle lives only in settings
+  s.ragToggle = get("ragToggle") ? chk("ragToggle") : true;
+
+  return s;
+}
+
+function writeUIState(s){
+  const setVal = (id, v)=>{
+    const el = document.getElementById(id);
+    if(el && "value" in el) el.value = v;
+  };
+  const setChk = (id, v)=>{
+    const el = document.getElementById(id);
+    if(el && "checked" in el) el.checked = !!v;
+  };
+
+  setVal("uiFontSize", s.uiFontSize);
+  setVal("uiDensity", s.uiDensity);
+  setVal("uiChatWidth", s.uiChatWidth);
+  setVal("uiCodeWrap", s.uiCodeWrap);
+  setChk("uiReduceMotion", s.uiReduceMotion);
+
+  setChk("chatShowTimestamps", s.chatShowTimestamps);
+  setChk("chatAutoScroll", s.chatAutoScroll);
+  setChk("chatRenderMarkdown", s.chatRenderMarkdown);
+  setChk("chatInlineSources", s.chatInlineSources);
+
+  setVal("sendKey", s.sendKey);
+  setVal("slashBehavior", s.slashBehavior);
+  setChk("confirmClearChat", s.confirmClearChat);
+
+  setChk("ragToggle", s.ragToggle);
+}
+
+function applyUIState(s){
+  const r = document.documentElement;
+  r.dataset.fontSize = s.uiFontSize;
+  r.dataset.density = s.uiDensity;
+  r.dataset.chatWidth = s.uiChatWidth;
+  r.dataset.codeWrap = s.uiCodeWrap;
+  r.dataset.reduceMotion = s.uiReduceMotion ? "1" : "0";
+}
+
+function loadUIState(){
+  try {
+    const raw = localStorage.getItem("ui.settings");
+    const s = raw ? {...DEFAULT_UI, ...JSON.parse(raw)} : {...DEFAULT_UI};
+    writeUIState(s);
+    applyUIState(s);
+    return s;
+  } catch {
+    const s = {...DEFAULT_UI};
+    writeUIState(s);
+    applyUIState(s);
+    return s;
+  }
+}
+
+function saveUIState(){
+  const s = readUIState();
+  localStorage.setItem("ui.settings", JSON.stringify(s));
+  applyUIState(s);
+  toast("Saved", "Settings updated.");
+  return s;
+}
+
+function resetUIState(){
+  localStorage.removeItem("ui.settings");
+  writeUIState({...DEFAULT_UI});
+  applyUIState({...DEFAULT_UI});
+  toast("Reset", "Back to defaults.");
+}
+
+// Buttons (if present)
+document.getElementById("btnSaveSettings")?.addEventListener("click", saveUIState);
+document.getElementById("btnResetSettings")?.addEventListener("click", resetUIState);
+
+// Live preview when changing controls
+document.addEventListener("input", (e)=>{
+  if(!settingsModal || settingsModal.classList.contains("hidden")) return;
+  const ids = new Set([
+    "uiFontSize","uiDensity","uiChatWidth","uiCodeWrap","uiReduceMotion"
+  ]);
+  if(e.target?.id && ids.has(e.target.id)){
+    applyUIState(readUIState());
+  }
+});
 function closeSettings(){
   settingsOverlay.classList.add("hidden");
   settingsModal.classList.add("hidden");
@@ -1567,9 +1782,9 @@ async function send() {
      if (!res.ok) {
        const errorData = await res.json().catch(() => ({}));
        const errorMsg = errorData.detail || errorData.error || `HTTP ${res.status}`;
-       promptEl.value = originalText;
+        promptEl.value = text;
        autoGrow();
-       showError(`Failed to send message: ${errorMsg}`, "retry", () => { promptEl.value = originalText; autoGrow(); send(); });
+        showError(`Failed to send message: ${errorMsg}`, "retry", () => { promptEl.value = text; autoGrow(); send(); });
        return;
      }
 
@@ -1675,9 +1890,9 @@ async function send() {
        const errorMsg = `Request failed: ${e}`;
        assistant.content = errorMsg;
        assistant.meta = { ...(assistant.meta || {}), error: String(e), sources: lastSources };
-       promptEl.value = originalText;
+        promptEl.value = text;
        autoGrow();
-       showError(errorMsg, "retry", () => { promptEl.value = originalText; autoGrow(); send(); });
+        showError(errorMsg, "retry", () => { promptEl.value = text; autoGrow(); send(); });
      }
      if (liveBody) liveBody.innerHTML = renderLiteMarkdown(assistant.content);
      saveState();
@@ -1901,4 +2116,7 @@ async function exportChat(format) {
 
   // Load slash commands and initialize command palette
   loadSlashCommands();
+
+  initSettingsTabs();
+  loadUIState();
 })();

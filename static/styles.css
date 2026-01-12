@@ -1359,3 +1359,82 @@ body{
 
 .checkbox.compact { gap:6px; padding:6px 8px; border-radius:10px; background: var(--card); border:1px solid var(--border); }
 .checkbox.compact input { margin:0; }
+
+/* =========================
+   UI Preferences (data-attrs)
+   ========================= */
+:root[data-font-size="sm"] { font-size: 14px; }
+:root[data-font-size="md"] { font-size: 16px; }
+:root[data-font-size="lg"] { font-size: 18px; }
+
+:root[data-density="compact"] .row,
+:root[data-density="compact"] .composer,
+:root[data-density="compact"] .sidebarTop,
+:root[data-density="compact"] .topbar { padding-top: 8px; padding-bottom: 8px; }
+
+:root[data-chat-width="comfortable"] .main { max-width: 980px; margin: 0 auto; width: 100%; }
+:root[data-chat-width="wide"] .main { max-width: 1200px; margin: 0 auto; width: 100%; }
+:root[data-chat-width="full"] .main { max-width: none; margin: 0; width: 100%; }
+
+:root[data-code-wrap="wrap"] pre { white-space: pre-wrap; word-break: break-word; }
+:root[data-code-wrap="nowrap"] pre { white-space: pre; }
+
+:root[data-reduce-motion="1"] * {
+  transition: none !important;
+  animation: none !important;
+  scroll-behavior: auto !important;
+}
+
+/* =========================
+   Fancy Settings Modal polish
+   ========================= */
+.settingsModal {
+  transform: translateY(8px) scale(.985);
+  opacity: 0;
+  transition: transform .14s ease, opacity .14s ease;
+}
+.modalOverlay:not(.hidden) + .settingsModal,
+#settingsModal:not(.hidden){
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Better input focus for "premium" feel */
+.settingsModal .input:focus,
+.settingsModal textarea:focus,
+.settingsModal select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(95,168,255,.18);
+  border-color: rgba(95,168,255,.35);
+}
+
+/* =========================
+   Toasts
+   ========================= */
+.toastHost{
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+  pointer-events: none;
+}
+.toast{
+  pointer-events: none;
+  min-width: 240px;
+  max-width: 360px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15,22,36,.90);
+  border: 1px solid rgba(255,255,255,.10);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 18px 45px rgba(0,0,0,.35);
+  transform: translateY(8px);
+  opacity: 0;
+  transition: transform .16s ease, opacity .16s ease;
+}
+.toast.show{ transform: translateY(0); opacity: 1; }
+.toastTitle{ font-weight: 800; margin-bottom: 2px; }
+.toastBody{ color: var(--muted); font-size: 12px; }

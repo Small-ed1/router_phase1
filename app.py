@@ -764,6 +764,21 @@ async def api_chat(req: ChatReq):
     if not req.messages or not req.model:
         raise HTTPException(400, "Messages and model are required")
 
+    # Validate model exists
+    if not _http:
+        raise HTTPException(503, "Client not initialized")
+    try:
+        r = await _http.get(f"{OLLAMA_URL}/api/tags", timeout=3.0)
+        r.raise_for_status()
+        data = r.json()
+        available_models = [m.get("name") for m in data.get("models", []) if m.get("name")]
+        if req.model not in available_models:
+            raise HTTPException(400, f"Model '{req.model}' not available. Available models: {', '.join(available_models)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(503, f"Failed to validate model: {str(e)}")
+
     if len(req.messages) > 100:
         raise HTTPException(400, "Too many messages")
 
