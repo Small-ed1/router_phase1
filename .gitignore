@@ -1,0 +1,8 @@
+﻿__pycache__/
+*.pyc
+*.log
+*.pid
+*.sqlite3
+uvicorn.*
+logs/
+data/*.sqlite3
