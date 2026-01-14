@@ -176,19 +176,19 @@ Creates tables if they don't exist, adds indexes.
 
 ## Current Status
 
-✅ SQLite database (`chat.sqlite3`) created
-✅ Chat storage with full CRUD
-✅ API endpoints working
-✅ Sidebar UI with closeable design
-✅ Tabs: Chats + Settings
-✅ Search + Archived filter
-✅ Auto-titling from first message
-✅ Context support (history restored on select)
-✅ Message persistence on send
-✅ Chat list updates in real-time
-✅ Clear chat (delete messages, keep chat)
-✅ Rename/Archive/Delete actions
-✅ Both servers running (FastAPI port 8000, Ollama port 11434)
+SQLite database (`chat.sqlite3`) created
+Chat storage with full CRUD
+API endpoints working
+Sidebar UI with closeable design
+Tabs: Chats + Settings
+Search + Archived filter
+Auto-titling from first message
+Context support (history restored on select)
+Message persistence on send
+Chat list updates in real-time
+Clear chat (delete messages, keep chat)
+Rename/Archive/Delete actions
+Both servers running (FastAPI port 8000, Ollama port 11434)
 
 ## Files Modified
 

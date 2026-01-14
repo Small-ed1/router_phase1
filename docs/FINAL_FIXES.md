@@ -1,6 +1,6 @@
 # Fixes Applied - Final
 
-## 1. Tooltip Performance Fix ✅
+## 1. Tooltip Performance Fix
 
 **Problem:** Adding `window.addEventListener('scroll')` and `window.addEventListener('resize')` per element created hundreds of global listeners, causing severe performance issues.
 
@@ -70,7 +70,7 @@ window.addEventListener("resize", () => computeTipClasses(activeTipEl), { passiv
 - No double-binding (checks `tipBound` flag)
 - Clean event lifecycle
 
-## 2. SQL Placeholder Bug Fix ✅
+## 2. SQL Placeholder Bug Fix
 
 **Problem:** `append_messages` function had 6 columns but only 5 placeholders in SQL, causing `sqlite3.OperationalError: 5 values for 6 columns`.
 
@@ -102,7 +102,7 @@ def _conn():
     return con
 ```
 
-## 3. Confirmed Defaults ✅
+## 3. Confirmed Defaults
 
 **Settings:**
 - Global-only settings (model/temp/system prompt apply everywhere)
@@ -115,9 +115,9 @@ Both servers running:
 - Ollama: http://localhost:11434 (PID 1478614)
 
 All fixes applied and verified working:
-- ✅ 2 global tooltip listeners (was 200+)
-- ✅ SQL INSERT has correct 6 placeholders for 6 columns
-- ✅ Foreign keys enabled
-- ✅ Tooltip edge-aware positioning (top/bottom/left/right)
-- ✅ Text wrapping for long tooltips
-- ✅ No double-binding events
+- 2 global tooltip listeners (was 200+)
+- SQL INSERT has correct 6 placeholders for 6 columns
+- Foreign keys enabled
+- Tooltip edge-aware positioning (top/bottom/left/right)
+- Text wrapping for long tooltips
+- No double-binding events

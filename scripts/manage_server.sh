@@ -17,10 +17,10 @@ start_server() {
     sleep 2
 
     if curl -s http://localhost:8003/health | grep -q '"ok":true'; then
-        echo "✅ Server started successfully on http://localhost:8003"
+        echo "Server started successfully on http://localhost:8003"
         echo "PID: $(cat $PID_FILE)"
     else
-        echo "❌ Server failed to start. Check logs: $LOG_FILE"
+        echo "Server failed to start. Check logs: $LOG_FILE"
         rm -f "$PID_FILE"
         return 1
     fi
@@ -44,7 +44,7 @@ stop_server() {
         fi
 
         rm -f "$PID_FILE"
-        echo "✅ Server stopped"
+        echo "Server stopped"
     else
         echo "Server process not found"
         rm -f "$PID_FILE"
@@ -54,7 +54,7 @@ stop_server() {
 status_server() {
     if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
         PID=$(cat "$PID_FILE")
-        echo "✅ Server is running (PID: $PID)"
+        echo "Server is running (PID: $PID)"
         echo "🌐 URL: http://localhost:8003"
 
         # Test health
@@ -64,7 +64,7 @@ status_server() {
             echo "🏥 Health: FAILED"
         fi
     else
-        echo "❌ Server is not running"
+        echo "Server is not running"
         [ -f "$PID_FILE" ] && rm -f "$PID_FILE"
     fi
 }

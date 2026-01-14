@@ -83,11 +83,11 @@ Environment variables:
 
 ## Current Status
 
-✅ Tooltips implemented and working
-✅ Auto model decider endpoint implemented
-✅ Frontend integration complete
-✅ Fallback logic for reliability
-✅ Both servers running and tested
+Tooltips implemented and working
+Auto model decider endpoint implemented
+Frontend integration complete
+Fallback logic for reliability
+Both servers running and tested
 
 ## Usage
 

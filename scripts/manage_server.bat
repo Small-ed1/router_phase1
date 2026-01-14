@@ -30,14 +30,14 @@ if defined SERVER_PID (
     timeout /t 2 >nul
     curl -s http://localhost:8003/health | findstr /c:"\"ok\":true" >nul
     if !errorlevel! equ 0 (
-        echo ✅ Server started successfully on http://localhost:8003
+        echo Server started successfully on http://localhost:8003
         echo PID: !SERVER_PID!
     ) else (
-        echo ❌ Server failed to start. Check logs: %LOG_FILE%
+        echo Server failed to start. Check logs: %LOG_FILE%
         del /q "%PID_FILE%" 2>nul
     )
 ) else (
-    echo ❌ Failed to start server
+    echo Failed to start server
 )
 goto end
 
@@ -61,7 +61,7 @@ if !errorlevel! equ 0 (
     )
 
     del /q "%PID_FILE%" 2>nul
-    echo ✅ Server stopped
+    echo Server stopped
 ) else (
     echo Server process not found
     del /q "%PID_FILE%" 2>nul
@@ -78,7 +78,7 @@ if exist "%PID_FILE%" (
     set /p PID=<"%PID_FILE%"
     tasklist /FI "PID eq !PID!" 2>nul | find /i "!PID!" >nul
     if !errorlevel! equ 0 (
-        echo ✅ Server is running (PID: !PID!)
+        echo Server is running (PID: !PID!)
         echo 🌐 URL: http://localhost:8003
 
         curl -s http://localhost:8003/health | findstr /c:"\"ok\":true" >nul
@@ -88,11 +88,11 @@ if exist "%PID_FILE%" (
             echo 🏥 Health: FAILED
         )
     ) else (
-        echo ❌ Server is not running
+        echo Server is not running
         del /q "%PID_FILE%" 2>nul
     )
 ) else (
-    echo ❌ Server is not running
+    echo Server is not running
 )
 goto end
 

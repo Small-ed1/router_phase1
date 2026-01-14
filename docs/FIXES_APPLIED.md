@@ -1,6 +1,6 @@
 # Fixes Applied
 
-## 1. Tooltip Performance Fix ✅
+## 1. Tooltip Performance Fix
 
 **Problem:** Adding `window.addEventListener('scroll')` and `window.addEventListener('resize')` per element creates hundreds of listeners.
 
@@ -68,7 +68,7 @@ window.addEventListener("resize", () => computeTipClasses(activeTipEl), { passiv
 - Only computes for active element
 - No double-binding (checks `tipBound` flag)
 
-## 2. SQL Placeholder Bug Fix ✅
+## 2. SQL Placeholder Bug Fix
 
 **Problem:** `append_messages` has 6 columns but only 5 placeholders.
 

@@ -107,11 +107,11 @@ curl -X POST http://localhost:8000/api/decide_model \
 
 ## Current Status
 
-✅ Tooltips: All elements use `aria-label`, double-tooltips eliminated
-✅ Auto Model: Filters embedding models, robust JSON parsing, safe fallbacks
-✅ Both servers running (FastAPI port 8000, Ollama port 11434)
-✅ 10 chat models installed (no embedding-only models)
-✅ All features tested and working
+Tooltips: All elements use `aria-label`, double-tooltips eliminated
+Auto Model: Filters embedding models, robust JSON parsing, safe fallbacks
+Both servers running (FastAPI port 8000, Ollama port 11434)
+10 chat models installed (no embedding-only models)
+All features tested and working
 
 ## Optional: Fast Decider Model
 
