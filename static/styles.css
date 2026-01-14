@@ -802,7 +802,7 @@ body::after{
   transition: transform .16s var(--ease2), opacity .16s var(--ease2);
 }
 
-.modal.hidden{ opacity:0; transform: translate(-50%, -48%) scale(.97); pointer-events:none; }
+.modal.hidden{ opacity:0; transform: translate(-50%, -48%) scale(.7); pointer-events:none; }
 
 .modalHead{
   display:flex;
@@ -1093,8 +1093,8 @@ body::after{
   --card: rgba(0,0,0,.14);
 
   /* glass + blur */
-  --glass: rgba(15,22,36,.58);
-  --glass2: rgba(17,27,44,.62);
+  --glass: rgba(15,22,36,.48);
+  --glass2: rgba(17,27,44,.52);
   --blur: 16px;          /* main gaussian blur strength */
   --blur2: 22px;         /* heavier blur for modals */
   --sat: 1.28;           /* saturation lift */
