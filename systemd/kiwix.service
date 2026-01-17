@@ -1,0 +1,14 @@
+[Unit]
+Description=Kiwix Offline ZIM Server (sdc)
+After=network.target local-fs.target
+RequiresMountsFor=/mnt/sdc
+
+[Service]
+Type=simple
+User=small_ed
+ExecStart=/usr/local/bin/kiwix-serve-sdc.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
