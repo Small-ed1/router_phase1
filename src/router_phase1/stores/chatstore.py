@@ -3,7 +3,9 @@ import os, sqlite3, time, uuid, json, re
 from typing import Any, Optional
 from contextlib import contextmanager
 
-CHAT_DB = os.getenv("CHAT_DB", os.path.join(os.path.dirname(__file__), "../data/chat.sqlite3"))
+from .. import config
+
+CHAT_DB = os.path.abspath(os.getenv("CHAT_DB", config.config.chat_db))
 
 VALID_ROLES = {"system", "user", "assistant"}
 
@@ -57,9 +59,12 @@ def init_db():
         if v < 6:
             _migrate_6_autosummary(con)
             _set_user_version(con, 6); v = 6
-        if v < 7:
-            _migrate_7_token_count(con)
-            _set_user_version(con, 7); v = 7
+    if v < 7:
+        _migrate_7_token_count(con)
+        _set_user_version(con, 7); v = 7
+    if v < 8:
+        _migrate_8_message_status(con)
+        _set_user_version(con, 8); v = 8
 
 def _migrate_1_baseline(con: sqlite3.Connection):
     con.execute("""
@@ -200,6 +205,11 @@ def _migrate_7_token_count(con: sqlite3.Connection):
     if "token_count" not in cols:
         con.execute("ALTER TABLE messages ADD COLUMN token_count INTEGER DEFAULT 0;")
 
+def _migrate_8_message_status(con: sqlite3.Connection):
+    cols = {r["name"] for r in con.execute("PRAGMA table_info(messages);").fetchall()}
+    if "status" not in cols:
+        con.execute("ALTER TABLE messages ADD COLUMN status TEXT DEFAULT 'final';")
+
 def _migrate_6_autosummary(con: sqlite3.Connection):
     cols = {r["name"] for r in con.execute("PRAGMA table_info(chat_settings);").fetchall()}
     if "autosummary_enabled" not in cols:
@@ -320,7 +330,7 @@ def get_chat(chat_id: str, limit: int = 2000, offset: int = 0) -> dict[str, Any]
             raise KeyError("chat not found")
 
         cur = con.execute("""
-          SELECT id, role, content, created_at, model, meta_json, token_count
+          SELECT id, role, content, created_at, model, meta_json, token_count, status
             FROM messages
            WHERE chat_id=?
            ORDER BY created_at ASC, id ASC
@@ -390,11 +400,14 @@ def append_messages(chat_id: str, items: list[dict[str, Any]]):
             msg_ts = _now()
             model = it.get("model")
             meta = _normalize_meta(it.get("meta_json"))
+            status = (it.get("status") or "final").strip().lower()
+            if status not in ("pending", "final", "error"):
+                status = "final"
             token_count = len(content.split())  # Simple token count
 
             cur = con.execute(
-                "INSERT INTO messages(chat_id,role,content,created_at,model,meta_json,token_count) VALUES(?,?,?,?,?,?,?)",
-                (chat_id, role, content, msg_ts, model, meta, token_count),
+                "INSERT INTO messages(chat_id,role,content,created_at,model,meta_json,token_count,status) VALUES(?,?,?,?,?,?,?,?)",
+                (chat_id, role, content, msg_ts, model, meta, token_count, status),
             )
             last_id = int(cur.lastrowid) if cur.lastrowid is not None else None
             wrote_any = True

@@ -14,8 +14,9 @@ except Exception:
     Document = None
 
 from . import ragstore
+from .. import config
 
-WEB_DB = os.getenv("WEB_DB", os.path.join(os.path.dirname(__file__), "../data/web.sqlite3"))
+WEB_DB = os.path.abspath(os.getenv("WEB_DB", config.config.web_db))
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434").rstrip("/")
 DEFAULT_EMBED_MODEL = os.getenv("EMBED_MODEL", "embeddinggemma")
 
@@ -95,7 +96,9 @@ def init_db():
           fetched_at INTEGER NOT NULL,
           published_at INTEGER,
           content_hash TEXT,
-          text TEXT NOT NULL
+          text TEXT NOT NULL,
+          embed_model TEXT,
+          embed_dim INTEGER
         );
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_web_pages_domain ON web_pages(domain);")
@@ -112,6 +115,12 @@ def init_db():
         );
         """)
         con.execute("CREATE INDEX IF NOT EXISTS idx_web_chunks_page ON web_chunks(page_id, chunk_index);")
+
+        cols = {r["name"] for r in con.execute("PRAGMA table_info(web_pages);").fetchall()}
+        if "embed_model" not in cols:
+            con.execute("ALTER TABLE web_pages ADD COLUMN embed_model TEXT;")
+        if "embed_dim" not in cols:
+            con.execute("ALTER TABLE web_pages ADD COLUMN embed_dim INTEGER;")
 
 def _domain(url: str) -> str:
     try:
@@ -223,7 +232,15 @@ async def upsert_page_from_url(url: str, force: bool = False, max_chars: int = 6
     if len(text) > max_chars:
         text = text[:max_chars]
 
+    embed_model = DEFAULT_EMBED_MODEL
     h = _hash(title + "\n" + text)
+
+    chunks = _chunk_text(text)
+    if not chunks:
+        raise ValueError("chunking produced no chunks")
+
+    embs = await ragstore.embed_texts(chunks, model=embed_model)
+    embed_dim = len(embs[0]) if embs else 0
 
     with _conn() as con:
         row = con.execute("SELECT id, content_hash FROM web_pages WHERE url=?", (url,)).fetchone()
@@ -235,24 +252,20 @@ async def upsert_page_from_url(url: str, force: bool = False, max_chars: int = 6
 
             con.execute("""
               UPDATE web_pages
-                 SET title=?, domain=?, fetched_at=?, content_hash=?, text=?
+                 SET title=?, domain=?, fetched_at=?, content_hash=?, text=?, embed_model=?, embed_dim=?
                WHERE id=?
-            """, (title, dom, now, h, text, row["id"]))
+            """, (title, dom, now, h, text, embed_model, embed_dim, row["id"]))
             page_id = int(row["id"])
             con.execute("DELETE FROM web_chunks WHERE page_id=?", (page_id,))
         else:
             cur = con.execute("""
-              INSERT INTO web_pages(url,domain,title,fetched_at,published_at,content_hash,text)
-              VALUES(?,?,?,?,NULL,?,?)
-            """, (url, dom, title, now, h, text))
-            page_id = int(cur.lastrowid)
-
-    chunks = _chunk_text(text)
-    if not chunks:
-        raise ValueError("chunking produced no chunks")
-
-    embed_model = DEFAULT_EMBED_MODEL
-    embs = await ragstore.embed_texts(chunks, model=embed_model)
+              INSERT INTO web_pages(url,domain,title,fetched_at,published_at,content_hash,text,embed_model,embed_dim)
+              VALUES(?,?,?,?,NULL,?,?,?,?)
+            """, (url, dom, title, now, h, text, embed_model, embed_dim))
+            lastrowid = cur.lastrowid
+            if lastrowid is None:
+                raise RuntimeError("failed to create web page row")
+            page_id = int(lastrowid)
     with _conn() as con:
         for idx, (ch, emb) in enumerate(zip(chunks, embs), start=0):
             blob = ragstore.embedding_to_blob(emb)
