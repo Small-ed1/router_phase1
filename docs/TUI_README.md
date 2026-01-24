@@ -1,6 +1,6 @@
-# Router Phase 1 - Terminal User Interface (TUI)
+# CogniHub - Terminal User Interface (TUI)
 
-A full-featured terminal interface for Router Phase 1 with the same functionality as the web GUI.
+A full-featured terminal interface for CogniHub with the same functionality as the web GUI.
 
 ## Features
 
@@ -44,12 +44,12 @@ Ctrl+T        Switch to next tab (Chats/Help)
 
 ### Start the TUI
 ```bash
-./router_tui.py
+python src/cognihub/tui/cognihub_tui.py
 ```
 
 Or use Python directly:
 ```bash
-python3 router_tui.py
+python3 src/cognihub/tui/cognihub_tui.py
 ```
 
 ### Requirements
@@ -57,12 +57,12 @@ python3 router_tui.py
 The TUI connects to your running API server. Make sure the backend is running:
 
 ```bash
-sudo systemctl start router_phase1
+sudo systemctl start cognihub
 ```
 
 Or start manually:
 ```bash
-python3 app.py
+uvicorn src.cognihub.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Configuration

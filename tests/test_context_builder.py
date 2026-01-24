@@ -1,5 +1,5 @@
-from router_phase1.services.context import build_context
-from router_phase1.services.retrieval import RetrievalResult
+from cognihub.services.context import build_context
+from cognihub.services.retrieval import RetrievalResult
 
 
 def test_build_context_caps_and_dedupe():

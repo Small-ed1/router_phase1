@@ -6,7 +6,7 @@ except ModuleNotFoundError:
         "Create a venv and install dependencies:\n"
         "  python -m venv .venv\n"
         "  .venv\\Scripts\\Activate.ps1\n"
-        "  pip install -e modules/router_phase1-tool\n"
+        "  pip install -e modules/cognihub-tool\n"
     )
     raise SystemExit(1)
 

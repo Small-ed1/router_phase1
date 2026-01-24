@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-APP_DIR="/home/small_ed/router_phase1"
+APP_DIR="/home/small_ed/cognihub"
 FASTAPI_PID_FILE="$APP_DIR/fastapi.pid"
 OLLAMA_PID_FILE="$APP_DIR/ollama.pid"
 FASTAPI_LOG="$APP_DIR/fastapi.log"
@@ -42,7 +42,7 @@ start_fastapi() {
     echo "Starting FastAPI..."
     source venv/bin/activate
     export PYTHONPATH="$APP_DIR/src"
-    nohup uvicorn router_phase1.app:app --host 0.0.0.0 --port 8000 > "$FASTAPI_LOG" 2>&1 &
+    nohup uvicorn cognihub.app:app --host 0.0.0.0 --port 8000 > "$FASTAPI_LOG" 2>&1 &
     FASTAPI_PID=$!
     echo "$FASTAPI_PID" > "$FASTAPI_PID_FILE"
     echo "FastAPI started (PID: $FASTAPI_PID), logging to $FASTAPI_LOG"

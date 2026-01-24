@@ -16,6 +16,7 @@ class Config:
         self.chat_db = os.getenv("CHAT_DB", "data/chat.sqlite3")
         self.web_db = os.getenv("WEB_DB", "data/web.sqlite3")
         self.research_db = os.getenv("RESEARCH_DB", "data/research.sqlite3")
+        self.tool_db = os.getenv("TOOL_DB", "data/tool.sqlite3")
         
         self.decider_model = os.getenv("DECIDER_MODEL")
         self.research_planner_model = os.getenv("RESEARCH_PLANNER_MODEL")

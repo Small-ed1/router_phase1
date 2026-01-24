@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import os, json, re, time, asyncio, logging
+import os, json, re, time, asyncio, logging, uuid
+from pathlib import Path
 from typing import Optional, Any, cast, Dict
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, UploadFile, File, HTTPException, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
@@ -22,6 +23,22 @@ from .services.models import ModelRegistry
 from .services.research import run_research
 from .services.tooling import ToolDocSearchReq, ToolWebSearchReq, chat_with_tools, tool_doc_search, tool_web_search
 from .services.web_ingest import WebIngestQueue
+from .toolstore import ToolStore
+from .tools.registry import ToolRegistry
+from .tools.executor import ToolExecutor
+from .tools import builtin
+
+
+def ensure_db_dirs():
+    """Ensure all database parent directories exist."""
+    for db_path in [
+        config.config.rag_db,
+        config.config.chat_db,
+        config.config.web_db,
+        config.config.research_db,
+        config.config.tool_db,
+    ]:
+        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -93,12 +110,30 @@ def _sanitize_filename(filename: str | None) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _http
+
+    # Ensure all DB directories exist
+    ensure_db_dirs()
+
     ragstore.init_db()
     chatstore.init_db()
     webstore.init_db()
     researchstore.init_db()
+
     _http = httpx.AsyncClient(timeout=None)
     await _web_ingest.start()
+
+    # Initialize tool system (after _http and _web_ingest are ready)
+    app.state.toolstore = ToolStore()
+    app.state.tool_registry = ToolRegistry()
+    builtin.register_builtin_tools(
+        app.state.tool_registry,
+        http=_http,
+        ingest_queue=_web_ingest,
+        embed_model=config.config.default_embed_model,
+        kiwix_url=os.getenv("KIWIX_URL"),
+    )
+    app.state.tool_executor = ToolExecutor(app.state.tool_registry, app.state.toolstore)
+
     try:
         yield
     finally:
@@ -793,16 +828,24 @@ class ChatReq(BaseModel):
     options: dict | None = None
     keep_alive: str | None = None
     rag: RagConfig | None = None
+    chat_id: str | None = None
+    message_id: str | None = None
 
 
 @app.post("/api/chat")
-async def api_chat(req: ChatReq):
+async def api_chat(req: ChatReq, request: Request):
     if not _http:
         raise HTTPException(503, "Client not initialized")
     http = _http
 
+    # Generate IDs if not provided
+    chat_id = req.chat_id or str(uuid.uuid4())
+    message_id = req.message_id or str(uuid.uuid4())
+
     async def stream():
         try:
+            # Emit IDs first
+            yield json.dumps({"type": "ids", "chat_id": chat_id, "message_id": message_id}) + "\n"
             async for line in stream_chat(
                 http=http,
                 model_registry=_model_registry,
@@ -815,6 +858,9 @@ async def api_chat(req: ChatReq):
                 embed_model=DEFAULT_EMBED_MODEL,
                 web_ingest=_web_ingest,
                 kiwix_url=os.getenv("KIWIX_URL"),
+                request=request,
+                chat_id=chat_id,
+                message_id=message_id,
             ):
                 yield line
         except Exception as e:

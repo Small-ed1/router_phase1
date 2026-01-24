@@ -1,4 +1,4 @@
-# CogniHub - Router Phase 1
+# CogniHub
 
 A local-first AI assistant with chat, RAG, and deep research capabilities. Built with FastAPI, SQLite, and integrated with Ollama for local model execution.
 
@@ -37,7 +37,7 @@ It expects the FastAPI server to be running and uses `API_BASE` (default `http:/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd router-phase1
+   cd cognihub
    ```
 
 2. **Install dependencies**
@@ -57,7 +57,7 @@ It expects the FastAPI server to be running and uses `API_BASE` (default `http:/
 
 ```bash
 # Start the server
-uvicorn app:app --reload --host 0.0.0.0 --port 8000
+uvicorn src.cognihub.app:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Open http://localhost:8000 in your browser.
@@ -65,7 +65,7 @@ Open http://localhost:8000 in your browser.
 #### Option 2: Terminal UI
 
 ```bash
-python router_tui.py
+python src/cognihub/tui/cognihub_tui.py
 ```
 
 #### Option 3: Production Deployment
@@ -83,18 +83,18 @@ sudo systemctl start cognihub kiwix
 
 ### Backend (FastAPI)
 
-- **Main Application**: `app.py` - FastAPI server with all endpoints
+- **Main Application**: `src/cognihub/app.py` - FastAPI server with all endpoints
 - **Database Modules**:
-  - `chatstore.py` - Chat and message management
-  - `ragstore.py` - Document storage and embeddings
-  - `webstore.py` - Web page caching and chunking
-  - `researchstore.py` - Research run tracking and claims
-- **Configuration**: `config.py` - Environment variable handling
+  - `src/cognihub/stores/chatstore.py` - Chat and message management
+  - `src/cognihub/stores/ragstore.py` - Document storage and embeddings
+  - `src/cognihub/stores/webstore.py` - Web page caching and chunking
+  - `src/cognihub/stores/researchstore.py` - Research run tracking and claims
+- **Configuration**: `src/cognihub/config.py` - Environment variable handling
 
 ### Frontend
 
 - **Web UI**: `static/index.html`, `static/app.js`, `static/styles.css`
-- **Terminal UI**: `router_tui.py` (Textual framework)
+- **Terminal UI**: `cognihub_tui.py` (Textual framework)
 
 ### Data Storage
 
@@ -186,13 +186,13 @@ cd backup && python -m pytest tests/ -v
 
 ```bash
 # Type checking
-mypy app.py --ignore-missing-imports
+mypy src/cognihub/ --ignore-missing-imports
 
 # Syntax validation
-python -m py_compile app.py chatstore.py ragstore.py webstore.py researchstore.py
+python -m py_compile src/cognihub/app.py src/cognihub/stores/*.py src/cognihub/services/*.py
 
 # Import testing
-python -c "import app, chatstore, ragstore, webstore, researchstore; print('All imports successful')"
+python -c "import sys; sys.path.insert(0, 'src'); import cognihub.app, cognihub.stores.chatstore, cognihub.stores.ragstore; print('All imports successful')"
 ```
 
 ### Database Operations
@@ -271,5 +271,4 @@ See `README_Windows.md` for Windows-specific setup instructions.
 
 ## License
 
-This project is open source. See individual files for license information.</content>
-<parameter name="filePath">/home/small_ed/router_phase1/README.md
+This project is open source. See individual files for license information.

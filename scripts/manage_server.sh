@@ -1,8 +1,8 @@
 #!/bin/bash
-# Router Phase 1 Server Management Script
+# CogniHub Server Management Script
 
 PID_FILE="/tmp/router_server.pid"
-LOG_FILE="/home/small_ed/router_phase1/server.log"
+LOG_FILE="/home/small_ed/cognihub/server.log"
 
 start_server() {
     if [ -f "$PID_FILE" ] && kill -0 $(cat "$PID_FILE") 2>/dev/null; then
@@ -10,9 +10,9 @@ start_server() {
         return 1
     fi
 
-    echo "Starting Router Phase 1 server..."
-    cd /home/small_ed/router_phase1
-    nohup python -m uvicorn app:app --host 0.0.0.0 --port 8003 > "$LOG_FILE" 2>&1 &
+    echo "Starting CogniHub server..."
+    cd /home/small_ed/cognihub
+    nohup python -m uvicorn src.cognihub.app:app --host 0.0.0.0 --port 8003 > "$LOG_FILE" 2>&1 &
     echo $! > "$PID_FILE"
     sleep 2
 

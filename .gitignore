@@ -1,4 +1,4 @@
-﻿__pycache__/
+__pycache__/
 *.pyc
 *.log
 *.pid
@@ -6,3 +6,9 @@
 uvicorn.*
 logs/
 data/*.sqlite3
+.env
+.env.local
+*.key
+*.pem
+secrets.json
+credentials.json
