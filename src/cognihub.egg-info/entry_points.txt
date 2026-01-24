@@ -1,0 +1,3 @@
+[console_scripts]
+cognihub-app = cognihub.app:main
+cognihub-tui = cognihub.tui.cognihub_tui:main

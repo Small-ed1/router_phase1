@@ -172,13 +172,21 @@ RESEARCH_VERIFIER_MODEL=llama3.1
 RESEARCH_SYNTH_MODEL=llama3.1
 ```
 
-### Web Scraping Protection
+### Search & Scraping Configuration
 
 ```bash
+# Search Provider Configuration
+COGNIHUB_SEARCH_PROVIDER=ddg,searxng  # Comma-separated provider order
+SEARXNG_URL=http://localhost:8080  # Local SearxNG instance (for fallback)
+WEB_UA=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
+
 # SSRF Protection
 WEB_ALLOWED_HOSTS=example.com,trusted.org
 WEB_BLOCKED_HOSTS=malicious.com
-WEB_UA=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36
+
+# Tool Configuration
+ALLOW_SHELL_EXEC=0  # Enable dangerous shell tool (1=enabled)
+TOOL_DB=~/.cognihub/data/tool.sqlite3
 ```
 
 ## Development
@@ -271,23 +279,49 @@ ollama serve
 **Problem: Models return empty responses**
 ```bash
 # Symptom: LLM says "I don't have enough information" or "I don't know" 
-# Cause: Tool-calling system not functioning properly
-# Solution 1: Check tool execution logs
-grep -i "tool" ~/.ollama/logs/ollama.log
-curl http://localhost:8000/api/status
+# Cause: Search providers blocked or failing silently
+# Solution 1: Check search provider status
+curl -X POST "https://duckduckgo.com/html/" -d "q=test"
+# If you get 302 redirects, DDG is blocking
 
-# Solution 2: Test tool-calling directly
-curl -X POST http://localhost:8000/api/chat \
-  -H "Content-Type: application/json" \
-  -d '{"messages": [{"role": "user", "content": "What is the weather like?"}]}'
+# Solution 2: Configure search fallback
+export COGNIHUB_SEARCH_PROVIDER="ddg,searxng"
+# Or use SearxNG only if DDG is consistently blocked
+export COGNIHUB_SEARCH_PROVIDER="searxng"
+export SEARXNG_URL="https://search.brave.com"
 
-# Solution 3: Verify embedding model for tool context
-ollama list | grep nomic-embed-text
-ollama pull nomic-embed-text  # if missing
+# Solution 3: Run local SearxNG instance (recommended)
+docker run -p 8080:8080 -d searxng/searxng
+export SEARXNG_URL="http://localhost:8080"
 
-# Solution 4: Check CogniHub API integration
-curl http://localhost:8000/api/models
-curl http://localhost:8000/api/docs  # view API documentation
+# Solution 4: Check tool execution logs
+sqlite3 ~/.cognihub/data/tool.sqlite3 \
+  "SELECT tool_name, ok, duration_ms, output_excerpt FROM tool_runs ORDER BY ts DESC LIMIT 5;"
+```
+
+**Problem: Search providers consistently fail**
+```bash
+# Symptom: All web searches return empty or errors
+# Solution 1: Test providers directly
+python -c "
+import asyncio
+from src.cognihub.services.web_search import web_search_with_fallback
+import httpx
+async def test():
+    async with httpx.AsyncClient() as http:
+        try:
+            results, provider = await web_search_with_fallback(http, 'test', 5)
+            print(f'Success: {provider}, {len(results)} results')
+        except Exception as e:
+            print(f'Failed: {e}')
+asyncio.run(test())
+"
+
+# Solution 2: Update user agent (anti-bot detection)
+export WEB_UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+
+# Solution 3: Try different search order
+export COGNIHUB_SEARCH_PROVIDER="searxng,ddg"
 ```
 
 #### 2. Python Environment Issues

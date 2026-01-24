@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any
@@ -13,7 +14,9 @@ from ..stores import ragstore, webstore
 from .. import config
 from .retrieval import KiwixRetrievalProvider
 from .web_ingest import WebIngestQueue
-from .web_search import ddg_search
+from .web_search import web_search_with_fallback, SearchError
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_MAX_TOOL_ROUNDS = 3
@@ -149,7 +152,14 @@ async def tool_web_search(
             errors.append({"stage": "kiwix", "error": str(exc)})
 
     try:
-        urls = await ddg_search(http, query, n=pages)
+        urls, provider_info = await web_search_with_fallback(http, query, n=pages)
+        # Log which provider succeeded
+        if provider_info.endswith("_success"):
+            provider = provider_info.replace("_success", "")
+            logger.info(f"Search succeeded with provider: {provider}")
+    except SearchError as exc:
+        urls = []
+        errors.append({"stage": "search", "error": str(exc)})
     except Exception as exc:
         urls = []
         errors.append({"stage": "search", "error": str(exc)})
@@ -188,6 +198,15 @@ async def tool_web_search(
         embed_model=req.embed_model or embed_model,
     )
     combined = kiwix_results + hits
+    
+    # Add provider error info if search failed
+    provider_error = None
+    if not urls and errors:
+        for error in errors:
+            if error.get("stage") == "search":
+                provider_error = error.get("error", "Unknown search error")
+                break
+    
     return {
         "query": query,
         "urls": urls,
@@ -196,6 +215,7 @@ async def tool_web_search(
         "errors": errors,
         "kiwix_results": kiwix_results,
         "results": combined,
+        "provider_error": provider_error,
     }
 
 

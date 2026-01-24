@@ -36,23 +36,46 @@ def register_builtin_tools(
 ) -> None:
 
     async def web_search_handler(args: WebSearchArgs) -> Dict[str, Any]:
-        req = ToolWebSearchReq(query=args.q)
-        result = await tool_web_search(
-            req,
-            http=http,
-            ingest_queue=ingest_queue,
-            embed_model=embed_model,
-            kiwix_url=kiwix_url,
-        )
+        try:
+            req = ToolWebSearchReq(query=args.q)
+            result = await tool_web_search(
+                req,
+                http=http,
+                ingest_queue=ingest_queue,
+                embed_model=embed_model,
+                kiwix_url=kiwix_url,
+            )
 
-        items = []
-        for p in result.get("pages", []):
-            items.append({
-                "title": p.get("title", ""),
-                "url": p.get("url", ""),
-                "snippet": p.get("snippet", ""),
-            })
-        return {"items": items}
+            items = []
+            for p in result.get("pages", []):
+                items.append({
+                    "title": p.get("title", ""),
+                    "url": p.get("url", ""),
+                    "snippet": p.get("snippet", ""),
+                })
+            
+            # Check for empty results and treat as error if provider indicates blocking
+            if not items:
+                # Check if we have provider info indicating failure
+                if hasattr(result, 'get') and result.get('provider_error'):
+                    return {
+                        "items": [],
+                        "error": f"web_search failed: {result['provider_error']}"
+                    }
+                else:
+                    return {
+                        "items": [], 
+                        "error": "web_search returned no results (provider may be blocked)"
+                    }
+            
+            return {"items": items}
+            
+        except Exception as e:
+            # Convert any exception to structured error response
+            return {
+                "items": [],
+                "error": f"web_search failed: {str(e)}"
+            }
 
     async def doc_search_handler(args: DocSearchArgs) -> Dict[str, Any]:
         req = ToolDocSearchReq(query=args.query, top_k=args.top_k)
