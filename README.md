@@ -30,7 +30,10 @@ It expects the FastAPI server to be running and uses `API_BASE` (default `http:/
 
 - Python 3.8+
 - [Ollama](https://ollama.ai/) installed and running
-- Required models: `llama3.1` and `embeddinggemma`
+- Required models: `llama3.1` and `nomic-embed-text`
+- System: Linux (Arch/Ubuntu) or macOS (Windows support in development)
+
+**Note**: The embedding model is `nomic-embed-text`, not `embeddinggemma`
 
 ### Installation
 
@@ -48,7 +51,18 @@ It expects the FastAPI server to be running and uses `API_BASE` (default `http:/
 3. **Pull required Ollama models**
    ```bash
    ollama pull llama3.1
-   ollama pull embeddinggemma
+   ollama pull nomic-embed-text
+   ```
+
+4. **Set up Python environment** (if you encounter externally-managed-environment errors)
+   ```bash
+   # Option 1: Virtual environment (recommended)
+   python -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   
+   # Option 2: System-wide install (development only)
+   pip install -r requirements.txt --break-system-packages
    ```
 
 ### Running
@@ -140,7 +154,7 @@ sudo systemctl start cognihub kiwix
 ```bash
 # Ollama Configuration
 OLLAMA_URL=http://127.0.0.1:11434
-EMBED_MODEL=embeddinggemma
+EMBED_MODEL=nomic-embed-text
 DEFAULT_CHAT_MODEL=llama3.1
 
 # Database Paths
@@ -225,34 +239,267 @@ See `README_Windows.md` for Windows-specific setup instructions.
 
 ## Troubleshooting
 
+### Critical Issues & Solutions
+
+#### 1. Ollama Installation & Setup Issues
+
+**Problem: Ollama not found**
+```bash
+# Error: bash: ollama: command not found
+# Solution: Install Ollama first
+sudo pacman -S ollama  # Arch Linux
+# Or visit https://ollama.ai/ for other distributions
+```
+
+**Problem: Package download fails (404 errors)**
+```bash
+# Error: Failed retrieving file 'ollama-*.pkg.tar.zst' from mirror
+# Solution: Update package databases first
+sudo pacman -Syu
+sudo pacman -S ollama
+```
+
+**Problem: Ollama embeddings API returns 404**
+```bash
+# Error: Client error '404 Not Found' for url 'http://127.0.0.1:11434/api/embeddings'
+# Solution 1: Pull required embedding model
+ollama pull nomic-embed-text
+# Solution 2: Ensure Ollama is running with embeddings support
+ollama serve
+```
+
+**Problem: Models return empty responses**
+```bash
+# Symptom: LLM says "I don't have enough information" or "I don't know" 
+# Cause: Tool-calling system not functioning properly
+# Solution 1: Check tool execution logs
+grep -i "tool" ~/.ollama/logs/ollama.log
+curl http://localhost:8000/api/status
+
+# Solution 2: Test tool-calling directly
+curl -X POST http://localhost:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"messages": [{"role": "user", "content": "What is the weather like?"}]}'
+
+# Solution 3: Verify embedding model for tool context
+ollama list | grep nomic-embed-text
+ollama pull nomic-embed-text  # if missing
+
+# Solution 4: Check CogniHub API integration
+curl http://localhost:8000/api/models
+curl http://localhost:8000/api/docs  # view API documentation
+```
+
+#### 2. Python Environment Issues
+
+**Problem: Externally-managed-environment error**
+```bash
+# Error: This environment is externally managed
+# Solution 1: Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Solution 2: Force install (not recommended for production)
+pip install -r requirements.txt --break-system-packages
+```
+
+**Problem: Commands not found after installation**
+```bash
+# Error: bash: uvicorn: command not found
+# Solution: Add local bin to PATH
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
+command -v uvicorn  # Verify
+command -v cognihub-app  # Verify
+```
+
+**Problem: Package installation in editable mode fails**
+```bash
+# Error: externally-managed-environment
+# Solution: Use --break-system-packages flag for development
+pip install -e . --break-system-packages
+```
+
+#### 3. Port & Service Conflicts
+
+**Problem: Port 11434 already in use**
+```bash
+# Error: listen tcp 127.0.0.1:11434: bind: address already in use
+# Solution: Find and kill existing process
+sudo lsof -i :11434
+sudo kill -9 <PID>
+# Or restart Ollama properly
+pkill ollama
+ollama serve &
+```
+
+**Problem: Port 8000 already in use**
+```bash
+# Solution 1: Kill existing process
+sudo lsof -i :8000
+sudo kill -9 <PID>
+
+# Solution 2: Use different port
+uvicorn src.cognihub.app:app --reload --host 0.0.0.0 --port 8001
+```
+
+#### 4. Model Loading & Performance Issues
+
+**Problem: Flash attention warnings**
+```bash
+# Warning: flash attention enabled but not supported by model
+# Solution: This is informational, models will still work
+# For better performance, install ollama-vulkan (if supported)
+sudo pacman -S ollama-vulkan
+OLLAMA_VULKAN=1 ollama serve
+```
+
+**Problem: Context size warnings**
+```bash
+# Warning: requested context size too large for model
+# Solution: Reduce context size in chat settings
+# Or use model with larger context window
+```
+
+**Problem: Slow response times**
+```bash
+# Symptom: Responses take 10+ seconds
+# Solution 1: Check if models are CPU-only (no GPU)
+ollama logs | grep "GPU"
+# Solution 2: Adjust Ollama for performance
+export OLLAMA_MAX_LOADED_MODELS=1
+export OLLAMA_NUM_PARALLEL=1
+```
+
+#### 5. Dependency & System Issues
+
+**Problem: Missing system dependencies**
+```bash
+# Error: Various import/dependency errors
+# Solution: Install system packages
+sudo pacman -S python python-pip sqlite fastapi uvicorn
+# For Arch Linux specific packages
+sudo pacman -S ollama ollama-vulkan
+```
+
+**Problem: Kiwix service fails**
+```bash
+# Solution: Check if kiwix is installed
+sudo pacman -S kiwix-tools
+# Or disable Kiwix if not needed
+sudo systemctl disable kiwix
+sudo systemctl stop kiwix
+```
+
 ### Common Issues
 
 1. **Ollama Connection Failed**
-   - Ensure Ollama is running: `ollama serve`
+   - Ensure Ollama is running: `ollama serve &`
    - Check OLLAMA_URL environment variable
    - Verify models are pulled: `ollama list`
+   - Test with: `curl http://127.0.0.1:11434/api/tags`
 
 2. **Port Already in Use**
-   - Change FastAPI port: `uvicorn app:app --port 8001`
+   - Change FastAPI port: `uvicorn src.cognihub.app:app --port 8001`
    - Or set environment: `API_BASE=http://localhost:8001`
+   - Find process: `sudo lsof -i :8000`
 
 3. **Database Errors**
    - Check file permissions on SQLite files
    - Run integrity check: `sqlite3 chat.sqlite3 "PRAGMA integrity_check;"`
+   - Ensure data directory exists and is writable
 
 4. **High Memory Usage**
    - Adjust cache settings in config.py
-   - Monitor with `htop` or system tools
+   - Monitor with `htop` or `btop`
+   - Limit loaded models in Ollama
 
-### Logs
+5. **Embedding Issues**
+   - Required: `nomic-embed-text` model (not embeddinggemma)
+   - Pull with: `ollama pull nomic-embed-text`
+   - Verify: `ollama list | grep embed`
 
-- FastAPI logs: `logs/fastapi.log`
-- Ollama logs: `logs/ollama.log`
-- Application logs: `server.log`
+### Debugging Commands
+
+```bash
+# Check Ollama status
+curl http://127.0.0.1:11434/api/tags
+curl http://127.0.0.1:11434/api/version
+
+# Check CogniHub API
+curl http://localhost:8000/api/status
+curl http://localhost:8000/api/models
+
+# Monitor logs
+tail -f ~/.ollama/logs/ollama.log
+journalctl -u cognihub -f
+
+# Check system resources
+btop  # or htop
+free -h
+df -h
+
+# Test model manually
+ollama run llama3.1 "Hello, test message"
+```
+
+### Logs & Monitoring
+
+- **FastAPI logs**: Console output when running uvicorn
+- **Ollama logs**: `~/.ollama/logs/ollama.log`
+- **Systemd logs**: `journalctl -u cognihub -f`
+- **Application logs**: Check console output for errors
+
+### Performance Optimization
+
+```bash
+# For CPU-only systems
+export OLLAMA_NUM_PARALLEL=1
+export OLLAMA_MAX_LOADED_MODELS=1
+
+# For systems with GPU support
+sudo pacman -S ollama-vulkan
+export OLLAMA_VULKAN=1
+
+# Monitor resource usage
+watch -n 1 'free -h && echo "---" && ps aux | grep ollama'
+```
+
+## Frequently Encountered Problems
+
+### The "4 Most Common Issues"
+
+1. **404 Not Found for embeddings API**
+   - **Cause**: Missing `nomic-embed-text` model
+   - **Fix**: `ollama pull nomic-embed-text`
+
+2. **Commands not found after pip install**
+   - **Cause**: PATH doesn't include `~/.local/bin`
+   - **Fix**: `export PATH="$HOME/.local/bin:$PATH" && hash -r`
+
+3. **Externally-managed-environment error**
+   - **Cause**: Modern Python distributions restrict pip installs
+   - **Fix**: Use virtual environment or `--break-system-packages`
+
+4. **Ollama connection failed**
+   - **Cause**: Ollama not running or wrong port
+   - **Fix**: `ollama serve &` or check OLLAMA_URL
+
+### Error Pattern Recognition
+
+| Error Message | Likely Cause | Quick Fix |
+|-------------|--------------|-----------|
+| `404 Not Found` for `/api/embeddings` | Missing embedding model | `ollama pull nomic-embed-text` |
+| `command not found: uvicorn` | PATH issue | `export PATH="$HOME/.local/bin:$PATH"` |
+| `externally-managed-environment` | Python protection | Use venv or `--break-system-packages` |
+| `address already in use` | Port conflict | `lsof -i :8000` and kill process |
+| "I don't have enough information" | Tool-calling failure | Check API status, verify embedding model, test tool endpoints |
+| Slow responses (>10s) | CPU-only inference | Install GPU drivers or accept slower speed |
 
 ## Contributing
 
-1. Follow the code style guidelines in `AGENTS.md`
+1. Follow code style guidelines in `AGENTS.md`
 2. Run tests before committing
 3. Update documentation for new features
 4. Use type hints and proper error handling
