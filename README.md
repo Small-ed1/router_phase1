@@ -36,7 +36,7 @@ It expects the FastAPI server to be running and uses `API_BASE` (default `http:/
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Small-ed1/CogniHub
    cd cognihub
    ```
 
